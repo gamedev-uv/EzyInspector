@@ -19,19 +19,19 @@ namespace UV.BetterInspector.Editors
         /// <summary>
         /// All the members which are to be drawn 
         /// </summary>
-        Dictionary<string, MemberInfo> _drawableMembers;
+        protected Dictionary<string, MemberInfo> _drawableMembers;
 
         /// <summary>
         /// All the methods which are to be drawn using buttons
         /// </summary>
-        Dictionary<ButtonAttribute, MethodInfo> _usableMethods;
+        protected Dictionary<ButtonAttribute, MethodInfo> _usableMethods;
 
-        private void OnEnable() => Init();
+        protected virtual void OnEnable() => Init();
 
         /// <summary>
         /// Initializes all the needed variables
         /// </summary>
-        private void Init()
+        protected virtual void Init()
         {
             _drawableMembers = target.GetSerializedMembers();
             _usableMethods = target.GetMethodsWithAttributes<ButtonAttribute>();
@@ -39,28 +39,29 @@ namespace UV.BetterInspector.Editors
 
         public override void OnInspectorGUI()
         {
-            DrawPropertiesExcluding(serializedObject, _drawableMembers.Keys.Append("m_Script").ToArray());
             DrawOpenScriptUI();
+            DrawPropertiesExcluding(serializedObject, _drawableMembers.Keys.Append("m_Script").ToArray());
             DrawSerializedMembers();
             DrawButtons();
+            serializedObject.ApplyModifiedProperties();
         }
 
         /// <summary>
         /// Draws a button to open the script in the specified editor
         /// </summary>
-        private void DrawOpenScriptUI()
+        protected virtual void DrawOpenScriptUI()
         {
             if (target.HasAttribute<HideMonoScriptAttribute>()) return;
 
             if (GUILayout.Button("Open Script"))
-               target.OpenScript();
+                target.OpenScript();
             GUILayout.Space(10);
         }
 
         /// <summary>
         /// Draws all the serialized memebers 
         /// </summary>
-        private void DrawSerializedMembers()
+        protected virtual void DrawSerializedMembers()
         {
             if (_drawableMembers == null || _drawableMembers.Count == 0) return;
 
@@ -76,7 +77,7 @@ namespace UV.BetterInspector.Editors
                 //Draw member
                 var memberObject = serializedObject.FindProperty(member.Key);
                 if (memberObject != null)
-                    EditorGUILayout.PropertyField(memberObject, true);
+                    EditorGUI.PropertyField(EditorGUILayout.GetControlRect(), memberObject, true);
             }
         }
 
@@ -84,7 +85,7 @@ namespace UV.BetterInspector.Editors
         /// Draws the readonly property drawer for the member
         /// </summary>
         /// <param name="member">The member to be drawn</param>
-        private void DrawReadOnly(MemberInfo member)
+        protected virtual void DrawReadOnly(MemberInfo member)
         {
             EditorGUI.BeginDisabledGroup(true);
 
@@ -99,7 +100,7 @@ namespace UV.BetterInspector.Editors
         /// <summary>
         /// Draws all the method buttons on the inspector 
         /// </summary>
-        private void DrawButtons()
+        protected virtual void DrawButtons()
         {
             if (_usableMethods == null || _usableMethods.Count == 0) return;
 
