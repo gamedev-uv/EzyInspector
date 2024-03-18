@@ -46,7 +46,7 @@ namespace UV.BetterInspector.Editors
 
             if(serializedObject.ApplyModifiedProperties())
             {
-                var onInspectorUpdate = target.GetMethodWithAttributes<OnInspectorUpdatedAttribute>();
+                var onInspectorUpdate = target.GetMethodWithAttribute<OnInspectorUpdatedAttribute>();
                 onInspectorUpdate?.Invoke(target, null);
             }
         }
