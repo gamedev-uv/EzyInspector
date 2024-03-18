@@ -1,0 +1,15 @@
+{
+  "name": "com.uv.better-inspector",
+  "version": "1.0.0",
+  "displayName": "Better Inspector",
+  "description": "A package targeted to make styling the editor easier!",
+  "unity": "2019.1",
+  "author": {
+    "name": "UV",
+    "email": "yuvraj12611@gmail.com",
+    "url": ""
+  },
+  "dependencies": {
+    "com.uv.utils": "1.0.0" 
+  }
+}
