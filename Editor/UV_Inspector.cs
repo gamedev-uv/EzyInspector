@@ -43,7 +43,12 @@ namespace UV.BetterInspector.Editors
             DrawPropertiesExcluding(serializedObject, _drawableMembers.Keys.Append("m_Script").ToArray());
             DrawSerializedMembers();
             DrawButtons();
-            serializedObject.ApplyModifiedProperties();
+
+            if(serializedObject.ApplyModifiedProperties())
+            {
+                var onInspectorUpdate = target.GetMethodWithAttributes<OnInspectorUpdatedAttribute>();
+                onInspectorUpdate?.Invoke(target, null);
+            }
         }
 
         /// <summary>
@@ -77,7 +82,7 @@ namespace UV.BetterInspector.Editors
                 //Draw member
                 var memberObject = serializedObject.FindProperty(member.Key);
                 if (memberObject != null)
-                    EditorGUI.PropertyField(EditorGUILayout.GetControlRect(), memberObject, true);
+                    EditorGUILayout.PropertyField(memberObject, true);
             }
         }
 
@@ -109,7 +114,7 @@ namespace UV.BetterInspector.Editors
             {
                 string buttonName = methodButton.Key.Name ?? methodButton.Value.Name;
                 if (GUILayout.Button(buttonName))
-                    methodButton.Value.Invoke(target, null);
+                    methodButton.Value?.Invoke(target, null);
             }
         }
     }
