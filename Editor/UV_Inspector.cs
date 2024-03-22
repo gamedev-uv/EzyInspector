@@ -34,7 +34,7 @@ namespace UV.BetterInspector.Editors
         protected virtual void Init()
         {
             _drawableMembers = target.GetSerializedMembers();
-            _usableMethods = target.GetMethodsWithAttributes<ButtonAttribute>();
+            _usableMethods = target.GetMethodsWithAttribute<ButtonAttribute>();
         }
 
         public override void OnInspectorGUI()
@@ -46,8 +46,12 @@ namespace UV.BetterInspector.Editors
 
             if(serializedObject.ApplyModifiedProperties())
             {
-                var onInspectorUpdate = target.GetMethodWithAttribute<OnInspectorUpdatedAttribute>();
-                onInspectorUpdate?.Invoke(target, null);
+                var onInspectorUpdate = target.GetMethodWithAttribute(out OnInspectorUpdatedAttribute att);
+                if(att != null)
+                {
+                    if(att.IsCorrectEditorPlayerState())
+                        onInspectorUpdate.Invoke(target, null);
+                }
             }
         }
 

@@ -3,7 +3,8 @@
     "rootNamespace": "UV.BetterInspector",
     "references": [
         "GUID:3fd7c71b50c807d4abe3f696fdc78113",
-        "GUID:efb39589f68eb8f43bda568832d8e518"
+        "GUID:efb39589f68eb8f43bda568832d8e518",
+        "GUID:687c18566bb9b7a4f9da8d201b84409c"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],
