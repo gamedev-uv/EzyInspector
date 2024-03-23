@@ -6,7 +6,7 @@ namespace UV.BetterInspector.Enums
     public enum EditorPlayState 
     {
         NotPlaying = 0,
-        Playing = 2,
-        Always = NotPlaying | Playing,
+        Playing = 1,
+        Always = 2,
     }
 }

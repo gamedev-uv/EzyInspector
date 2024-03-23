@@ -49,7 +49,7 @@ namespace UV.BetterInspector.Editors
                 var onInspectorUpdate = target.GetMethodWithAttribute(out OnInspectorUpdatedAttribute att);
                 if(att != null)
                 {
-                    if(att.IsCorrectEditorPlayerState())
+                    if (att.IsCorrectEditorPlayerState())
                         onInspectorUpdate.Invoke(target, null);
                 }
             }

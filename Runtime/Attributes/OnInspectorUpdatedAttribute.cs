@@ -16,7 +16,7 @@ namespace UV.BetterInspector
         /// </summary>
         private EditorPlayState _updateEditorPlayState;
 
-        public OnInspectorUpdatedAttribute(EditorPlayState editorGameState)
+        public OnInspectorUpdatedAttribute(EditorPlayState editorGameState = EditorPlayState.Always)
         {
             _updateEditorPlayState = editorGameState;
         }
