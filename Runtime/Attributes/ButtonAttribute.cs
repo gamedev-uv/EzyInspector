@@ -2,6 +2,8 @@ using System;
 
 namespace UV.BetterInspector
 {
+    using Enums;
+
     /// <summary>
     /// Used to draw buttons in the inspector
     /// </summary>
@@ -14,20 +16,29 @@ namespace UV.BetterInspector
         public string Name { get; private set; }
 
         /// <summary>
-        /// Draws a button in the inspector with the name of the method 
+        /// The sequence to draw the button in
         /// </summary>
-        public ButtonAttribute()
+        public EditorDrawSequence DrawSequence { get; private set; }
+
+        /// <summary>
+        /// Draws a button in the inspector
+        /// </summary>
+        /// <param name="buttonName">The name of button</param>
+        /// <param name="editorDrawSequence">The target draw sequence of the button</param>
+        public ButtonAttribute(string buttonName = null, EditorDrawSequence editorDrawSequence = EditorDrawSequence.AfterDefaultEditor)
         {
-            Name = null;
+            Name = buttonName;
+            DrawSequence = editorDrawSequence;
         }
 
         /// <summary>
-        /// Draws a button in the inspector with the given name
+        /// Draws a button in the inspector 
         /// </summary>
-        /// <param name="buttonName">The name of button</param>
-        public ButtonAttribute(string buttonName)
+        /// <param name="editorDrawSequence">The target draw sequence of the button</param>
+        public ButtonAttribute(EditorDrawSequence editorDrawSequence = EditorDrawSequence.AfterDefaultEditor)
         {
-            Name = buttonName;
+            Name = null;
+            DrawSequence = editorDrawSequence;
         }
     }
 }

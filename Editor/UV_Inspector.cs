@@ -6,6 +6,7 @@ using System.Collections.Generic;
 
 namespace UV.BetterInspector.Editors
 {
+    using UV.BetterInspector.Enums;
     using UV.Utils;
     using UV.Utils.Editors;
 
@@ -24,7 +25,7 @@ namespace UV.BetterInspector.Editors
         /// <summary>
         /// All the methods which are to be drawn using buttons
         /// </summary>
-        protected Dictionary<ButtonAttribute, MethodInfo> _usableMethods;
+        protected Dictionary<ButtonAttribute, MethodInfo> _buttonMethods;
 
         protected virtual void OnEnable() => Init();
 
@@ -34,15 +35,15 @@ namespace UV.BetterInspector.Editors
         protected virtual void Init()
         {
             _drawableMembers = target.GetSerializedMembers();
-            _usableMethods = target.GetMethodsWithAttribute<ButtonAttribute>();
+            _buttonMethods = target.GetMethodsWithAttribute<ButtonAttribute>();
         }
 
         public override void OnInspectorGUI()
         {
             DrawOpenScriptUI();
-            DrawPropertiesExcluding(serializedObject, _drawableMembers.Keys.Append("m_Script").ToArray());
-            DrawSerializedMembers();
-            DrawButtons();
+            DrawButtons(EditorDrawSequence.BeforeDefaultEditor);
+            DrawDefaultUI();
+            DrawButtons(EditorDrawSequence.AfterDefaultEditor);
 
             if(serializedObject.ApplyModifiedProperties())
             {
@@ -56,6 +57,15 @@ namespace UV.BetterInspector.Editors
         }
 
         /// <summary>
+        /// Draws the default editor view
+        /// </summary>
+        protected virtual void DrawDefaultUI()
+        {
+            DrawPropertiesExcluding(serializedObject, _drawableMembers.Keys.Append("m_Script").ToArray());
+            DrawSerializedMembers();
+        }
+
+        /// <summary>
         /// Draws a button to open the script in the specified editor
         /// </summary>
         protected virtual void DrawOpenScriptUI()
@@ -64,7 +74,7 @@ namespace UV.BetterInspector.Editors
 
             if (GUILayout.Button("Open Script"))
                 target.OpenScript();
-            GUILayout.Space(10);
+            GUILayout.Space(5);
         }
 
         /// <summary>
@@ -109,16 +119,19 @@ namespace UV.BetterInspector.Editors
         /// <summary>
         /// Draws all the method buttons on the inspector 
         /// </summary>
-        protected virtual void DrawButtons()
+        /// <param name="drawSequence">The sequence for which the buttons are to be drawn</param>
+        protected virtual void DrawButtons(EditorDrawSequence drawSequence)
         {
-            if (_usableMethods == null || _usableMethods.Count == 0) return;
+            if (_buttonMethods == null || _buttonMethods.Count == 0) return;
 
-            GUILayout.Space(15);
-            foreach (var methodButton in _usableMethods)
+            foreach (var methodButton in _buttonMethods)
             {
+                if (!methodButton.Key.DrawSequence.Equals(drawSequence)) continue;
                 string buttonName = methodButton.Key.Name ?? methodButton.Value.Name;
                 if (GUILayout.Button(buttonName))
                     methodButton.Value?.Invoke(target, null);
+
+                GUILayout.Space(5);
             }
         }
     }
