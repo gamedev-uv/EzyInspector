@@ -16,6 +16,18 @@ namespace UV.BetterInspector
         /// </summary>
         private EditorPlayState _updateEditorPlayState;
 
+        /// <summary>
+        /// Invokes the method when the inspector is updated
+        /// </summary>
+        public OnInspectorUpdatedAttribute()
+        {
+            _updateEditorPlayState = EditorPlayState.Always;
+        }
+
+        /// <summary>
+        /// Invokes the method when the inspector is updated
+        /// </summary>
+        /// <param name="editorGameState">The game state to invoke the methods in</param>
         public OnInspectorUpdatedAttribute(EditorPlayState editorGameState = EditorPlayState.Always)
         {
             _updateEditorPlayState = editorGameState;

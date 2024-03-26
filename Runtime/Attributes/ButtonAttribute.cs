@@ -25,10 +25,10 @@ namespace UV.BetterInspector
         /// </summary>
         /// <param name="buttonName">The name of button</param>
         /// <param name="editorDrawSequence">The target draw sequence of the button</param>
-        public ButtonAttribute(string buttonName = null, EditorDrawSequence editorDrawSequence = EditorDrawSequence.AfterDefaultEditor)
+        public ButtonAttribute(string buttonName)
         {
             Name = buttonName;
-            DrawSequence = editorDrawSequence;
+            DrawSequence = EditorDrawSequence.AfterDefaultEditor;
         }
 
         /// <summary>
@@ -38,6 +38,17 @@ namespace UV.BetterInspector
         public ButtonAttribute(EditorDrawSequence editorDrawSequence = EditorDrawSequence.AfterDefaultEditor)
         {
             Name = null;
+            DrawSequence = editorDrawSequence;
+        }
+
+        /// <summary>
+        /// Draws a button in the inspector
+        /// </summary>
+        /// <param name="buttonName">The name of button</param>
+        /// <param name="editorDrawSequence">The target draw sequence of the button</param>
+        public ButtonAttribute(string buttonName, EditorDrawSequence editorDrawSequence)
+        {
+            Name = buttonName;
             DrawSequence = editorDrawSequence;
         }
     }
