@@ -2,7 +2,6 @@ using System;
 
 namespace UV.BetterInspector
 {
-    using Enums;
     using UnityEngine;
 
     /// <summary>

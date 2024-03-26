@@ -2,8 +2,6 @@ using System;
 
 namespace UV.BetterInspector
 {
-    using Enums;
-
     /// <summary>
     /// Used to draw buttons in the inspector
     /// </summary>

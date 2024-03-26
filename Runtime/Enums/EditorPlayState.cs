@@ -1,4 +1,4 @@
-namespace UV.BetterInspector.Enums
+namespace UV.BetterInspector
 {
     /// <summary>
     /// The state of the game in the editor

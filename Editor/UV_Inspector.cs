@@ -6,7 +6,6 @@ using System.Collections.Generic;
 
 namespace UV.BetterInspector.Editors
 {
-    using UV.BetterInspector.Enums;
     using UV.Utils;
     using UV.Utils.Editors;
 

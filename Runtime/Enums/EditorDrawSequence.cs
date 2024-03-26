@@ -1,4 +1,4 @@
-namespace UV.BetterInspector.Enums
+namespace UV.BetterInspector
 {
     /// <summary>
     /// Used to define the draw sequence of the editor 
