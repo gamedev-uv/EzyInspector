@@ -24,7 +24,7 @@ namespace UV.BetterInspector.Editors
         /// <summary>
         /// All the methods which are to be drawn using buttons
         /// </summary>
-        protected Dictionary<ButtonAttribute, MethodInfo> _buttonMethods;
+        protected Dictionary<MethodInfo, ButtonAttribute> _buttonMethods;
 
         protected virtual void OnEnable() => Init();
 
@@ -125,10 +125,10 @@ namespace UV.BetterInspector.Editors
 
             foreach (var methodButton in _buttonMethods)
             {
-                if (!methodButton.Key.DrawSequence.Equals(drawSequence)) continue;
+                if (!methodButton.Value.DrawSequence.Equals(drawSequence)) continue;
                 string buttonName = methodButton.Key.Name ?? methodButton.Value.Name;
                 if (GUILayout.Button(buttonName))
-                    methodButton.Value?.Invoke(target, null);
+                    methodButton.Key?.Invoke(target, null);
 
                 GUILayout.Space(5);
             }
