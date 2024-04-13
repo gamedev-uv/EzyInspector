@@ -125,13 +125,24 @@ namespace UV.BetterInspector.Editors
 
             foreach (var methodButton in _buttonMethods)
             {
-                if (!methodButton.Value.DrawSequence.Equals(drawSequence)) continue;
-                string buttonName = methodButton.Key.Name ?? methodButton.Value.Name;
-                if (GUILayout.Button(buttonName))
-                    methodButton.Key?.Invoke(target, null);
-
-                GUILayout.Space(5);
+                var button = methodButton.Value;
+                if (!button.DrawSequence.Equals(drawSequence)) continue;
+                DrawButton(methodButton.Key, button);
             }
+        }
+
+        /// <summary>
+        /// Draws a button in the inspector for the given method styled by the button attribute
+        /// </summary>
+        /// <param name="method">The method to be drawn</param>
+        /// <param name="button">The button used to style the ui</param>
+        protected virtual void DrawButton(MethodInfo method, ButtonAttribute button)
+        {
+            string buttonName = button.DisplayName ?? method.Name;
+            if (GUILayout.Button(buttonName))
+                method?.Invoke(target, null);
+
+            GUILayout.Space(5);
         }
     }
 }

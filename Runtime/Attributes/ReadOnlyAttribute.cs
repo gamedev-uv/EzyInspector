@@ -1,9 +1,9 @@
-using System;
+using UnityEngine;
 
 namespace UV.BetterInspector
 {
     /// <summary>
     /// Makes the member readonly 
     /// </summary>
-    public class ReadOnlyAttribute : Attribute { }
+    public class ReadOnlyAttribute : PropertyAttribute { }
 }
