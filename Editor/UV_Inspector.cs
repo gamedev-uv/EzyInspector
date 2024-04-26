@@ -139,8 +139,11 @@ namespace UV.BetterInspector.Editors
         protected virtual void DrawButton(MethodInfo method, ButtonAttribute button)
         {
             string buttonName = button.DisplayName ?? method.Name;
-            if (GUILayout.Button(buttonName))
+            if (GUILayout.Button(buttonName)) 
+            {
                 method?.Invoke(target, null);
+                EditorUtility.SetDirty(this);
+            }
 
             GUILayout.Space(5);
         }
