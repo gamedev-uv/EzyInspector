@@ -1,6 +1,6 @@
 {
-    "name": "UV.BetterInspector",
-    "rootNamespace": "UV.BetterInspector",
+    "name": "UV.EzyInspector",
+    "rootNamespace": "UV.EzyInspector",
     "references": [
         "GUID:3fd7c71b50c807d4abe3f696fdc78113",
         "GUID:efb39589f68eb8f43bda568832d8e518"
