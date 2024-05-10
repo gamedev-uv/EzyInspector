@@ -1,7 +1,7 @@
 using UnityEngine;
 using UnityEditor;
 
-namespace UV.BetterInspector.Editors
+namespace UV.EzyInspector.Editors
 {
     [CustomPropertyDrawer(typeof(ReadOnlyAttribute))]
     public class ReadOnlyDrawer : PropertyDrawer

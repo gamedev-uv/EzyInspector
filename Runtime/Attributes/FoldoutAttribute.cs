@@ -1,6 +1,6 @@
 using System;
 
-namespace UV.BetterInspector
+namespace UV.EzyInspector
 {
     /// <summary>
     /// Used to draw foldouts in the inspector 

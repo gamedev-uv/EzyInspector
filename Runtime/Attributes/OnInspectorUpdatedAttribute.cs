@@ -1,6 +1,6 @@
 using System;
 
-namespace UV.BetterInspector
+namespace UV.EzyInspector
 {
     using UnityEngine;
 

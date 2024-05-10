@@ -4,7 +4,7 @@ using UnityEngine;
 using System.Reflection;
 using System.Collections.Generic;
 
-namespace UV.BetterInspector.Editors
+namespace UV.EzyInspector.Editors
 {
     using UV.Utils;
     using UV.Utils.Editors;

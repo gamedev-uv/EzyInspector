@@ -1,4 +1,4 @@
-namespace UV.BetterInspector
+namespace UV.EzyInspector
 {
     /// <summary>
     /// Used to define the draw sequence of the editor 

@@ -1,7 +1,7 @@
 using UnityEditor;
 using UnityEngine;
 
-namespace UV.BetterInspector.Editors
+namespace UV.EzyInspector.Editors
 {
     /// <summary>
     /// Drawer that force draws interfaces in the inspector

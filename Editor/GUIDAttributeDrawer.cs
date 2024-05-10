@@ -1,7 +1,7 @@
 using UnityEditor;
 using UnityEngine;
 
-namespace UV.BetterInspector.Editors
+namespace UV.EzyInspector.Editors
 {
     /// <summary>
     /// Custom drawer for GUID Attribute that fetches the Unity GUID and assings it back to the field 

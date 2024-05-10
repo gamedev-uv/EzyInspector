@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using System.Reflection;
 using UnityEngine;
 
-namespace UV.BetterInspector.Editors
+namespace UV.EzyInspector.Editors
 {
     using System.Linq;
     using UV.Utils;

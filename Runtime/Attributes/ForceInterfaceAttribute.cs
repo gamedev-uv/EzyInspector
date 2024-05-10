@@ -1,7 +1,7 @@
 using System;
 using UnityEngine;
 
-namespace UV.BetterInspector
+namespace UV.EzyInspector
 {
     /// <summary>
     /// Force draws the interface in the inspector 

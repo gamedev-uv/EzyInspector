@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace UV.BetterInspector
+namespace UV.EzyInspector
 {
     /// <summary>
     /// Makes the member readonly 

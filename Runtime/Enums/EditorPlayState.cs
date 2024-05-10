@@ -1,4 +1,4 @@
-namespace UV.BetterInspector
+namespace UV.EzyInspector
 {
     /// <summary>
     /// The state of the game in the editor

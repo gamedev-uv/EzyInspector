@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace UV.BetterInspector
+namespace UV.EzyInspector
 {
     /// <summary>
     /// The attribute that saves the Unity guid to the given string 

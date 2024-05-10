@@ -1,6 +1,6 @@
 using System;
 
-namespace UV.BetterInspector
+namespace UV.EzyInspector
 {
     /// <summary>
     /// Hides the open script ui from the inspector
