@@ -1,7 +1,7 @@
 {
-  "name": "com.uv.better-inspector",
+  "name": "com.uv.ezy-inspector",
   "version": "1.0.0",
-  "displayName": "Better Inspector",
+  "displayName": "Ezy Inspector",
   "description": "A package targeted to make styling the editor easier!",
   "unity": "2019.1",
   "author": {
