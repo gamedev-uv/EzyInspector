@@ -44,10 +44,10 @@ namespace UV.EzyInspector.Editors
             DrawDefaultUI();
             DrawButtons(EditorDrawSequence.AfterDefaultEditor);
 
-            if(serializedObject.ApplyModifiedProperties())
+            if (serializedObject.ApplyModifiedProperties())
             {
                 var onInspectorUpdate = target.GetMethodWithAttribute(out OnInspectorUpdatedAttribute att);
-                if(att != null)
+                if (att != null)
                 {
                     if (att.IsCorrectEditorPlayerState())
                         onInspectorUpdate.Invoke(target, null);
@@ -85,6 +85,10 @@ namespace UV.EzyInspector.Editors
 
             foreach (var member in _drawableMembers)
             {
+                //Check if member has ShowIf attribute and draw it accordingly 
+                if (member.Value.HasAttribute<ShowIf>())
+                    DrawShowIfMember(member.Value, member.Value.GetCustomAttribute<ShowIf>());
+
                 //Draw readonly members
                 if (member.Value.HasAttribute<ReadOnlyAttribute>())
                 {
@@ -97,6 +101,37 @@ namespace UV.EzyInspector.Editors
                 if (memberObject != null)
                     EditorGUILayout.PropertyField(memberObject, true);
             }
+        }
+
+        /// <summary>
+        /// Draws the show if property
+        /// </summary>
+        /// <param name="member">The member with the attribute</param>
+        /// <param name="showIf">The show if attribute</param>
+        protected virtual void DrawShowIfMember(MemberInfo member, ShowIf showIf)
+        {
+            //Find the attribute and the related property 
+            SerializedProperty property = null;
+            property ??= serializedObject.FindProperty($"<{showIf.PropertyName}>k__BackingField");
+            property ??= serializedObject.FindProperty(showIf.PropertyName);
+
+            //If the property wasn't found then display a error box
+            if (property == null)
+            {
+                EditorGUILayout.HelpBox($"Property : {showIf.PropertyName} not found!", MessageType.Error);
+                return;
+            }
+
+            //If the property type is supported
+            //Booleans are the only ones which are supported for now 
+            if (property.propertyType != SerializedPropertyType.Boolean)
+            {
+                EditorGUILayout.HelpBox($"{property.propertyType} is currently not supported!", MessageType.Error);
+                return;
+            }
+
+            //If the target value and the current value are not the same return
+            if (showIf.TargetBoolValue != property.boolValue) return;
         }
 
         /// <summary>
@@ -139,7 +174,7 @@ namespace UV.EzyInspector.Editors
         protected virtual void DrawButton(MethodInfo method, ButtonAttribute button)
         {
             string buttonName = button.DisplayName ?? method.Name;
-            if (GUILayout.Button(buttonName)) 
+            if (GUILayout.Button(buttonName))
             {
                 method?.Invoke(target, null);
                 EditorUtility.SetDirty(this);
