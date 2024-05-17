@@ -44,15 +44,24 @@ namespace UV.EzyInspector.Editors
             DrawDefaultUI();
             DrawButtons(EditorDrawSequence.AfterDefaultEditor);
 
-            if (serializedObject.ApplyModifiedProperties())
+            //Apply modified properties and check if anything was updated 
+            serializedObject.ApplyModifiedProperties();
+            if (!EditorUtility.IsDirty(target)) return;
+
+            //Find methods which are to be called 
+            var onInspectorUpdatedMethods = target.GetMethodsWithAttribute<OnInspectorUpdatedAttribute>();
+            if (onInspectorUpdatedMethods == null || onInspectorUpdatedMethods.Count == 0) return;
+
+            //Loop through them and invoke them if the editor play state is correct
+            foreach (var pair in onInspectorUpdatedMethods)
             {
-                var onInspectorUpdate = target.GetMethodWithAttribute(out OnInspectorUpdatedAttribute att);
-                if (att != null)
-                {
-                    if (att.IsCorrectEditorPlayerState())
-                        onInspectorUpdate.Invoke(target, null);
-                }
+                var method = pair.Key;
+                var att = pair.Value;
+                if (att.IsCorrectEditorPlayerState()) method?.Invoke(target, null);
             }
+
+            //Clear any dirty on the target
+            EditorUtility.ClearDirty(target);
         }
 
         /// <summary>
