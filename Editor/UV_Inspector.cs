@@ -85,6 +85,14 @@ namespace UV.EzyInspector.Editors
 
             foreach (var member in _drawableMembers)
             {
+                //If the member has the EditMode Attribute draw it accordingly 
+                if(member.Value.HasAttribute(out EditModeOnly editMode) && Application.isPlaying)
+                {
+                    if (editMode.HideMode == HideMode.Hide) return;
+                    DrawReadOnly(member.Value);
+                    return;
+                }
+
                 //Check if member has ShowIf attribute and draw it accordingly 
                 if (member.Value.HasAttribute<ShowIf>())
                     DrawShowIfMember(member.Value, member.Value.GetCustomAttribute<ShowIf>());
