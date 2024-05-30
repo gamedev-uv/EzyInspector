@@ -19,7 +19,7 @@ namespace UV.EzyInspector.Editors
         /// <returns>Return true or false based on if it is serialized or not</returns>
         public static bool IsSerialized(this MemberInfo member)
         {
-            return member.HasAttribute<SerializeField>() || member.HasAttribute<SerializeReference>() || member.IsPublic();
+            return member.HasAttribute<SerializeField>() || member.HasAttribute<SerializeReference>() || IsPublic(member);
         }
 
         /// <summary>
@@ -30,8 +30,11 @@ namespace UV.EzyInspector.Editors
         public static bool IsPublic(this MemberInfo member)
         {
             if (member is FieldInfo field) return field.IsPublic;
-            if (member is PropertyInfo property) return property.GetGetMethod() != null || property.GetSetMethod() != null;
             if (member is MethodInfo method) return method.IsPublic;
+
+            if (member is PropertyInfo property)
+                return (property.GetGetMethod(true) ?? property.GetSetMethod(true)).IsPublic;
+
             return false;
         }
 
@@ -40,19 +43,38 @@ namespace UV.EzyInspector.Editors
         /// </summary>
         /// <param name="obj">The object to be find the members in</param>
         /// <returns>Returns all the serialized members</returns>
-        public static Dictionary<string, MemberInfo> GetSerializedMembers(this Object obj)
+        public static (MemberInfo, object, string)[] GetSerializedMembers(this Object obj)
         {
-            Dictionary<string, MemberInfo> serializedMembers = new();
+            List<(MemberInfo, object, string)> serializedMembers = new();
 
-            var members = obj.GetType().GetMembers(BindingFlags.Public | BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.GetField | BindingFlags.GetProperty);
-            foreach (var member in members)
+            object currentObj = null;
+            var members = obj.GetMembers(false);
+
+            foreach (var (member, memberObj, path) in members)
             {
-                if (!member.IsSerialized() || member.MemberType == MemberTypes.Method || serializedMembers.ContainsKey(member.Name)) continue;
-                serializedMembers.Add(member.Name, member);
+                if (!member.IsSerialized()) continue;
+                if (currentObj != memberObj)
+                    currentObj = memberObj;
+
+                serializedMembers.Add((member, memberObj, path));
             }
 
-            return serializedMembers;
+            return serializedMembers.ToArray();
         }
+
+        //public static (MemberInfo, object, string)[] GetSerializedMembers(this Object obj)
+        //{
+        //    List<(MemberInfo, object, string)> serializedMembers = new();
+
+        //    var members = obj.GetType().GetMembers(BindingFlags.Public | BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.GetField | BindingFlags.GetProperty);
+        //    foreach (var member in members)
+        //    {
+        //        if (!member.IsSerialized() || member.MemberType == MemberTypes.Method) continue;
+        //        serializedMembers.Add((member, null, member.Name));
+        //    }
+
+        //    return serializedMembers.ToArray();
+        //}
 
         /// <summary>
         /// Returns all the foldoutMember groups which are to be drawn on the inspector

@@ -19,12 +19,17 @@ namespace UV.EzyInspector.Editors
         /// <summary>
         /// All the members which are to be drawn 
         /// </summary>
-        protected Dictionary<string, MemberInfo> _drawableMembers;
+        protected (MemberInfo, object, string)[] _drawableMembers;
 
         /// <summary>
         /// All the methods which are to be drawn using buttons
         /// </summary>
         protected Dictionary<MethodInfo, ButtonAttribute> _buttonMethods;
+
+        /// <summary>
+        /// All the properties which are disabled / readonly
+        /// </summary>
+        protected List<SerializedProperty> _disabledProperties;
 
         protected virtual void OnEnable() => Init();
 
@@ -69,7 +74,7 @@ namespace UV.EzyInspector.Editors
         /// </summary>
         protected virtual void DrawDefaultUI()
         {
-            DrawPropertiesExcluding(serializedObject, _drawableMembers.Keys.Append("m_Script").ToArray());
+            DrawPropertiesExcluding(serializedObject, _drawableMembers.Select(x => x.Item3).Append("m_Script").ToArray());
             DrawSerializedMembers();
         }
 
@@ -90,79 +95,105 @@ namespace UV.EzyInspector.Editors
         /// </summary>
         protected virtual void DrawSerializedMembers()
         {
-            if (_drawableMembers == null || _drawableMembers.Count == 0) return;
+            _disabledProperties = new();
 
-            foreach (var member in _drawableMembers)
+            var indent = EditorGUI.indentLevel;
+            var guiState = GUI.enabled;
+
+            foreach (var (member, memberObj, memberPath) in _drawableMembers)
             {
-                //If the member has the EditMode Attribute draw it accordingly 
-                if(member.Value.TryGetAttribute(out EditModeOnly editMode) && Application.isPlaying)
+                //Fetch the property of the member 
+                var propertyPath = memberPath.Replace($"{target}.", "");
+                var property = serializedObject.FindProperty(propertyPath);
+                if (property == null)
+                    continue;
+
+                //Go to initial values
+                EditorGUI.indentLevel = indent;
+                GUI.enabled = guiState;
+
+                //Check if the property has parent(s) 
+                if (propertyPath.Contains('.'))
                 {
-                    if (editMode.HideMode == HideMode.Hide) return;
-                    DrawReadOnly(member.Value);
-                    return;
+                    //Try to find the instant parent property 
+                    var parentPropertyPath = propertyPath[..propertyPath.LastIndexOf('.')];
+                    var parentProperty = serializedObject.FindProperty(parentPropertyPath);
+                    if (parentProperty != null && !parentProperty.isExpanded) return;
+
+                    //Change indent level and readonly based on the parent 
+                    EditorGUI.indentLevel = indent + propertyPath.Count(x => x.Equals('.'));
+                    var readOnly = _disabledProperties
+                                                    .Where(x => x.name.Equals(parentProperty.name))
+                                                    .FirstOrDefault() != null;
+                    GUI.enabled = !readOnly;
                 }
 
-                //Check if member has ShowIf attribute and draw it accordingly 
-                if (member.Value.HasAttribute<ShowIf>())
-                    DrawShowIfMember(member.Value, member.Value.GetCustomAttribute<ShowIf>());
-
-                //Draw readonly members
-                if (member.Value.HasAttribute<ReadOnlyAttribute>())
+                //If the member has the EditMode Attribute draw it accordingly 
+                if (member.TryGetAttribute(out EditModeOnly editMode) && Application.isPlaying)
                 {
-                    DrawReadOnly(member.Value);
+                    if (editMode.HideMode == HideMode.Hide) return;
+                    DrawReadOnly(property);
                     continue;
                 }
 
-                //Draw member
-                var memberObject = serializedObject.FindProperty(member.Key);
-                if (memberObject != null)
-                    EditorGUILayout.PropertyField(memberObject, true);
+                //Check if member has ShowIfAttribute attribute and draw it accordingly 
+                if (member.TryGetAttribute(out ShowIfAttribute showIf))
+                {
+                    if (!CheckShowIfProperty(member, memberObj, showIf))
+                    {
+                        DrawReadOnly(property);
+                        continue;
+                    }
+                }
+
+                //Draw readonly members
+                if (member.HasAttribute<ReadOnlyAttribute>())
+                {
+                    DrawReadOnly(property);
+                    continue;
+                }
+
+                //Draw the member normally 
+                EditorGUILayout.PropertyField(property, property.isArray);
             }
         }
 
         /// <summary>
-        /// Draws the show if property
+        /// Check whether the show if property is to be drawn or not
         /// </summary>
-        /// <param name="member">The member with the attribute</param>
-        /// <param name="showIf">The show if attribute</param>
-        protected virtual void DrawShowIfMember(MemberInfo member, ShowIf showIf)
+        /// <param propertyPath="member">The member with the attribute</param>
+        /// <param propertyPath="obj">The member with the attribute</param>
+        /// <param propertyPath="showIf">The show if attribute</param>
+        /// <returns>Returns true or false based on if the property is to be drawn or not</returns>
+        protected virtual bool CheckShowIfProperty(MemberInfo member, object obj, ShowIfAttribute showIf)
         {
-            //Find the attribute and the related property 
-            SerializedProperty property = null;
-            property ??= serializedObject.FindProperty($"<{showIf.PropertyName}>k__BackingField");
-            property ??= serializedObject.FindProperty(showIf.PropertyName);
+            //Find the show if property 
+            var showIfMemberPair = obj.GetMember(showIf.PropertyName);
+            var showIfMember = showIfMemberPair.Item1;
+            var showIfMemberObj = showIfMemberPair.Item2;
 
-            //If the property wasn't found then display a error box
-            if (property == null)
-            {
-                EditorGUILayout.HelpBox($"Property : {showIf.PropertyName} not found!", MessageType.Error);
-                return;
-            }
+            //Return true or false based on if the values are equal or not
+            var value = showIfMemberObj.GetValue(showIfMember);
 
-            //If the property type is supported
-            //Booleans are the only ones which are supported for now 
-            if (property.propertyType != SerializedPropertyType.Boolean)
-            {
-                EditorGUILayout.HelpBox($"{property.propertyType} is currently not supported!", MessageType.Error);
-                return;
-            }
+            Debug.Log($"{member.Name} => {showIfMember} {value} == {showIf.TargetValue}");
 
-            //If the target value and the current value are not the same return
-            if (showIf.TargetBoolValue != property.boolValue) return;
+            if (value == null) return showIf.TargetValue == null;
+            return value.Equals(showIf.TargetValue);
         }
 
         /// <summary>
-        /// Draws the readonly property drawer for the member
+        /// Draws the readonly property drawer for the property
         /// </summary>
-        /// <param name="member">The member to be drawn</param>
-        protected virtual void DrawReadOnly(MemberInfo member)
+        /// <param propertyPath="property">The property to be drawn</param>
+        protected virtual void DrawReadOnly(SerializedProperty property)
         {
+            if (property == null) return;
+
+            _disabledProperties ??= new();
+            _disabledProperties.Add(property);
+
             EditorGUI.BeginDisabledGroup(true);
-
-            var memberObject = serializedObject.FindProperty(member.Name);
-            if (memberObject != null)
-                EditorGUILayout.PropertyField(memberObject, true);
-
+            EditorGUILayout.PropertyField(property, property.isArray);
             EditorGUI.EndDisabledGroup();
             serializedObject.ApplyModifiedProperties();
         }
@@ -170,7 +201,7 @@ namespace UV.EzyInspector.Editors
         /// <summary>
         /// Draws all the method buttons on the inspector 
         /// </summary>
-        /// <param name="drawSequence">The sequence for which the buttons are to be drawn</param>
+        /// <param propertyPath="drawSequence">The sequence for which the buttons are to be drawn</param>
         protected virtual void DrawButtons(EditorDrawSequence drawSequence)
         {
             if (_buttonMethods == null || _buttonMethods.Count == 0) return;
@@ -186,8 +217,8 @@ namespace UV.EzyInspector.Editors
         /// <summary>
         /// Draws a button in the inspector for the given method styled by the button attribute
         /// </summary>
-        /// <param name="method">The method to be drawn</param>
-        /// <param name="button">The button used to style the ui</param>
+        /// <param propertyPath="method">The method to be drawn</param>
+        /// <param propertyPath="button">The button used to style the ui</param>
         protected virtual void DrawButton(MethodInfo method, ButtonAttribute button)
         {
             string buttonName = button.DisplayName ?? method.Name;

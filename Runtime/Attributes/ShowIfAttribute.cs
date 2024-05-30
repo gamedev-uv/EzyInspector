@@ -5,17 +5,12 @@ namespace UV.EzyInspector
     /// <summary>
     /// Only displays a property based on the condition passed 
     /// </summary>
-    public class ShowIf : PropertyAttribute
+    public class ShowIfAttribute : PropertyAttribute
     {
-        public ShowIf(string propertyName)
+        public ShowIfAttribute(string propertyName, object targetValue) 
         {
             PropertyName = propertyName;
-            TargetBoolValue = true;
-        }
-
-        public ShowIf(string propertyName, bool targetBoolValue) : this(propertyName)
-        {
-            TargetBoolValue = targetBoolValue;
+            TargetValue = targetValue;
         }
 
         /// <summary>
@@ -24,8 +19,8 @@ namespace UV.EzyInspector
         public string PropertyName { get; private set; }
 
         /// <summary>
-        /// The target boolean value of the property 
+        /// The target value of the property 
         /// </summary>
-        public bool TargetBoolValue { get; private set; } = true;
+        public object TargetValue { get; private set; } = true;
     }
 }
