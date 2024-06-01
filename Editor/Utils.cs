@@ -46,35 +46,16 @@ namespace UV.EzyInspector.Editors
         public static (MemberInfo, object, string)[] GetSerializedMembers(this Object obj)
         {
             List<(MemberInfo, object, string)> serializedMembers = new();
-
-            object currentObj = null;
             var members = obj.GetMembers(false);
 
             foreach (var (member, memberObj, path) in members)
             {
                 if (!member.IsSerialized()) continue;
-                if (currentObj != memberObj)
-                    currentObj = memberObj;
-
                 serializedMembers.Add((member, memberObj, path));
             }
 
             return serializedMembers.ToArray();
         }
-
-        //public static (MemberInfo, object, string)[] GetSerializedMembers(this Object obj)
-        //{
-        //    List<(MemberInfo, object, string)> serializedMembers = new();
-
-        //    var members = obj.GetType().GetMembers(BindingFlags.Public | BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.GetField | BindingFlags.GetProperty);
-        //    foreach (var member in members)
-        //    {
-        //        if (!member.IsSerialized() || member.MemberType == MemberTypes.Method) continue;
-        //        serializedMembers.Add((member, null, member.Name));
-        //    }
-
-        //    return serializedMembers.ToArray();
-        //}
 
         /// <summary>
         /// Returns all the foldoutMember groups which are to be drawn on the inspector
