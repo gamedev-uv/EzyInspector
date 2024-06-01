@@ -1,8 +1,10 @@
+using System;
 using System.Linq;
 using UnityEditor;
 using UnityEngine;
 using System.Reflection;
 using System.Collections.Generic;
+using Object = UnityEngine.Object;
 
 namespace UV.EzyInspector.Editors
 {
@@ -19,12 +21,22 @@ namespace UV.EzyInspector.Editors
         /// <summary>
         /// All the members which are to be drawn 
         /// </summary>
-        protected (MemberInfo, object, string)[] _drawableMembers;
+        protected (MemberInfo, object, string, Attribute[])[] _drawableMembers;
 
         /// <summary>
         /// All the methods which are to be drawn using buttons
         /// </summary>
         protected Dictionary<MethodInfo, ButtonAttribute> _buttonMethods;
+
+        /// <summary>
+        /// All the methods which are called when the inspector is updated
+        /// </summary>
+        protected Dictionary<MethodInfo, OnInspectorUpdatedAttribute> _onInspectorUpdatedMethods;
+
+        /// <summary>
+        /// All the methods which are called when the transform is updated
+        /// </summary>
+        protected Dictionary<MethodInfo, OnTransformUpdatedAttribute> _onTransformUpdated;
 
         /// <summary>
         /// All the properties which are disabled / readonly
@@ -34,39 +46,64 @@ namespace UV.EzyInspector.Editors
         protected virtual void OnEnable() => Init();
 
         /// <summary>
+        /// Whether the open mono script button is to be hidden or not
+        /// </summary>
+        private bool _hideMonoScript;
+
+        /// <summary>
         /// Initializes all the needed variables
         /// </summary>
         protected virtual void Init()
         {
             _drawableMembers = target.GetSerializedMembers();
             _buttonMethods = target.GetMethodsWithAttribute<ButtonAttribute>();
+            _onInspectorUpdatedMethods = target.GetMethodsWithAttribute<OnInspectorUpdatedAttribute>();
+            _onTransformUpdated = target.GetMethodsWithAttribute<OnTransformUpdatedAttribute>();
+            _hideMonoScript = target.HasAttribute<HideMonoScriptAttribute>();
         }
 
         public override void OnInspectorGUI()
         {
+            ManagerTransformUpdateMethods();
             DrawOpenScriptUI();
             DrawButtons(EditorDrawSequence.BeforeDefaultEditor);
             DrawDefaultUI();
             DrawButtons(EditorDrawSequence.AfterDefaultEditor);
 
             //Apply modified properties and check if anything was updated 
-            serializedObject.ApplyModifiedProperties();
-            if (!EditorUtility.IsDirty(target)) return;
+            if (!serializedObject.ApplyModifiedProperties()) return;
 
             //Find methods which are to be called 
-            var onInspectorUpdatedMethods = target.GetMethodsWithAttribute<OnInspectorUpdatedAttribute>();
-            if (onInspectorUpdatedMethods == null || onInspectorUpdatedMethods.Count == 0) return;
+            if (_onInspectorUpdatedMethods == null || _onInspectorUpdatedMethods.Count == 0) return;
 
             //Loop through them and invoke them if the editor play state is correct
-            foreach (var pair in onInspectorUpdatedMethods)
+            foreach (var pair in _onInspectorUpdatedMethods)
             {
                 var method = pair.Key;
                 var att = pair.Value;
                 if (att.IsCorrectEditorPlayerState()) method?.Invoke(target, null);
             }
+        }
 
-            //Clear any dirty on the target
-            EditorUtility.ClearDirty(target);
+        /// <summary>
+        /// Calls the methods which are to be called when the transform is updated 
+        /// </summary>
+        protected virtual void ManagerTransformUpdateMethods()
+        {
+            var objTarget = target as MonoBehaviour;
+            if (target == null || objTarget == null) return;
+            if (!objTarget.transform.hasChanged) return;
+
+            //Find methods which are to be called  
+            if (_onTransformUpdated == null || _onTransformUpdated.Count == 0) return;
+
+            //Loop through them and invoke them if the editor play state is correct
+            foreach (var pair in _onTransformUpdated)
+            {
+                var method = pair.Key;
+                var att = pair.Value;
+                if (att.IsCorrectEditorPlayerState()) method?.Invoke(target, null);
+            }
         }
 
         /// <summary>
@@ -83,7 +120,7 @@ namespace UV.EzyInspector.Editors
         /// </summary>
         protected virtual void DrawOpenScriptUI()
         {
-            if (target.HasAttribute<HideMonoScriptAttribute>()) return;
+            if (_hideMonoScript) return;
 
             if (GUILayout.Button("Open Script"))
                 target.OpenScript();
@@ -100,8 +137,14 @@ namespace UV.EzyInspector.Editors
             var indent = EditorGUI.indentLevel;
             var guiState = GUI.enabled;
 
-            foreach (var (member, memberObj, memberPath) in _drawableMembers)
+            foreach (var memberTuple in _drawableMembers)
             {
+                //Access variables from the tuple
+                var member = memberTuple.Item1;
+                var memberObj = memberTuple.Item2;
+                var memberPath = memberTuple.Item3;
+                var attributes = memberTuple.Item4;
+
                 //Fetch the property of the member 
                 var propertyPath = memberPath.Replace($"{target}.", "");
                 var property = serializedObject.FindProperty(propertyPath);
@@ -112,13 +155,19 @@ namespace UV.EzyInspector.Editors
                 EditorGUI.indentLevel = indent;
                 GUI.enabled = guiState;
 
+                //Debug.Log($"{property.displayName} {string.Join(',', attributes.ToList())}");
+
                 //Check if the property has parent(s) 
                 if (propertyPath.Contains('.'))
                 {
                     //Try to find the instant parent property 
                     var parentPropertyPath = propertyPath[..propertyPath.LastIndexOf('.')];
                     var parentProperty = serializedObject.FindProperty(parentPropertyPath);
-                    if (parentProperty != null && !parentProperty.isExpanded) return;
+                    if (parentProperty != null && !parentProperty.isExpanded)
+                    {
+                        property.isExpanded = false;
+                        continue;
+                    }
 
                     //Change indent level and readonly based on the parent 
                     EditorGUI.indentLevel = indent + propertyPath.Count(x => x.Equals('.'));
@@ -129,25 +178,29 @@ namespace UV.EzyInspector.Editors
                 }
 
                 //If the member has the EditMode Attribute draw it accordingly 
-                if (member.TryGetAttribute(out EditModeOnly editMode) && Application.isPlaying)
+                if (memberTuple.TryGetAttribute(out EditModeOnly editMode) && Application.isPlaying)
                 {
-                    if (editMode.HideMode == HideMode.Hide) return;
+                    if (editMode.HideMode == HideMode.Hide) continue;
                     DrawReadOnly(property);
                     continue;
                 }
 
                 //Check if member has ShowIfAttribute attribute and draw it accordingly 
-                if (member.TryGetAttribute(out ShowIfAttribute showIf))
+                if (memberTuple.TryGetAttribute(out ShowIfAttribute showIf))
                 {
                     if (!CheckShowIfProperty(member, memberObj, showIf))
                     {
-                        DrawReadOnly(property);
+                        if (showIf.HideMode == HideMode.ReadOnly)
+                            DrawReadOnly(property);
+                        else
+                            property.isExpanded = false;
+
                         continue;
                     }
                 }
 
                 //Draw readonly members
-                if (member.HasAttribute<ReadOnlyAttribute>())
+                if (memberTuple.HasAttribute<ReadOnlyAttribute>())
                 {
                     DrawReadOnly(property);
                     continue;
@@ -175,10 +228,37 @@ namespace UV.EzyInspector.Editors
             //Return true or false based on if the values are equal or not
             var value = showIfMemberObj.GetValue(showIfMember);
 
-            Debug.Log($"{member.Name} => {showIfMember} {value} == {showIf.TargetValue}");
+            //If the value is null display a help box accordingly 
+            if (showIfMember == null || value == null)
+            {
+                //Extract just the name of the member 
+                var memberName = member.Name;
+                var startingIndex = memberName.IndexOf('<') + 1;
+                var endingIndex = memberName.IndexOf('>');
 
-            if (value == null) return showIf.TargetValue == null;
-            return value.Equals(showIf.TargetValue);
+                if (startingIndex > -1 && endingIndex > -1)
+                    memberName = memberName[startingIndex..endingIndex];
+
+                //Draw the help box 
+                EditorGUILayout.HelpBox($"\"{showIf.PropertyName}\" not found!\nCan't draw : \"{memberName}\"", MessageType.Error);
+                return showIf.TargetValues == null || showIf.TargetValues.Length == 0;
+            }
+
+            for (int i = 0; i < showIf.TargetValues.Length; i++)
+            {
+                var targetValue = showIf.TargetValues[i];
+                var targetValueType = targetValue.GetType();
+
+                //Casts the fetched value back into the type value
+                var typedValue = value.ChangeType(targetValueType);
+                if (typedValue == null) return false;
+
+                //Checks whether the values are the same or not
+                if (typedValue.Equals(targetValue))
+                    return true;
+            }
+
+            return false;
         }
 
         /// <summary>

@@ -4,29 +4,29 @@ using UnityEngine;
 namespace UV.EzyInspector
 {
     /// <summary>
-    /// Calls the method when the inspector of the object is updated
+    /// Calls the method when the transform of the object is updated
     /// </summary>
     [AttributeUsage(AttributeTargets.Method, AllowMultiple = false, Inherited = true)]
-    public class OnInspectorUpdatedAttribute : Attribute
+    public class OnTransformUpdatedAttribute : Attribute
     {
         /// <summary>
-        /// The state when the method is called if the inspector is updated
+        /// The state when the method is called if the transform is updated
         /// </summary>
         private readonly EditorPlayState _updateEditorPlayState;
 
         /// <summary>
         /// Invokes the method when the inspector is updated
         /// </summary>
-        public OnInspectorUpdatedAttribute()
+        public OnTransformUpdatedAttribute()
         {
             _updateEditorPlayState = EditorPlayState.Always;
         }
 
         /// <summary>
-        /// Invokes the method when the inspector is updated
+        /// Invokes the method when the transform is updated
         /// </summary>
         /// <param name="editorGameState">The game state to invoke the methods in</param>
-        public OnInspectorUpdatedAttribute(EditorPlayState editorGameState = EditorPlayState.Always)
+        public OnTransformUpdatedAttribute(EditorPlayState editorGameState = EditorPlayState.Always)
         {
             _updateEditorPlayState = editorGameState;
         }
@@ -37,8 +37,8 @@ namespace UV.EzyInspector
         public bool IsCorrectEditorPlayerState()
         {
             if (_updateEditorPlayState.Equals(EditorPlayState.Always)) return true;
-            if(Application.isPlaying && _updateEditorPlayState.Equals(EditorPlayState.Playing)) return true;
-            if(!Application.isPlaying && _updateEditorPlayState.Equals(EditorPlayState.NotPlaying)) return true;
+            if (Application.isPlaying && _updateEditorPlayState.Equals(EditorPlayState.Playing)) return true;
+            if (!Application.isPlaying && _updateEditorPlayState.Equals(EditorPlayState.NotPlaying)) return true;
             return false;
         }
     }

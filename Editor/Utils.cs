@@ -4,6 +4,7 @@ using UnityEngine;
 
 namespace UV.EzyInspector.Editors
 {
+    using System;
     using System.Linq;
     using UV.Utils;
 
@@ -19,7 +20,17 @@ namespace UV.EzyInspector.Editors
         /// <returns>Return true or false based on if it is serialized or not</returns>
         public static bool IsSerialized(this MemberInfo member)
         {
-            return member.HasAttribute<SerializeField>() || member.HasAttribute<SerializeReference>() || IsPublic(member);
+            return HasSerializableAttributes(member) || IsPublic(member);
+        }
+
+        /// <summary>
+        /// Whether the given member has serializable attributes or not i.e. SerializeField or SerializeReference
+        /// </summary>
+        /// <param name="member">The member to be checked</param>
+        /// <returns>Return true or false based on if it i has serializable attributes or not</returns>
+        public static bool HasSerializableAttributes(this MemberInfo member)
+        {
+            return member.HasAttribute<SerializeField>() || member.HasAttribute<SerializeReference>();
         }
 
         /// <summary>
@@ -43,15 +54,16 @@ namespace UV.EzyInspector.Editors
         /// </summary>
         /// <param name="obj">The object to be find the members in</param>
         /// <returns>Returns all the serialized members</returns>
-        public static (MemberInfo, object, string)[] GetSerializedMembers(this Object obj)
+        public static (MemberInfo, object, string, Attribute[])[] GetSerializedMembers(this Object obj)
         {
-            List<(MemberInfo, object, string)> serializedMembers = new();
+            List<(MemberInfo, object, string, Attribute[])> serializedMembers = new();
             var members = obj.GetMembers(false);
 
-            foreach (var (member, memberObj, path) in members)
+            foreach (var (member, memberObj, path, attributes) in members)
             {
+                if (member == null) continue;
                 if (!member.IsSerialized()) continue;
-                serializedMembers.Add((member, memberObj, path));
+                serializedMembers.Add((member, memberObj, path, attributes));
             }
 
             return serializedMembers.ToArray();
@@ -89,6 +101,30 @@ namespace UV.EzyInspector.Editors
             }
 
             return foldoutGroups;
+        }
+
+        /// <summary>
+        /// Checks whether the given member has the attribute on it and returns the attribute if found
+        /// </summary>
+        /// <typeparam name="T">The type of attribute to find</typeparam>
+        /// <param name="memberTuple">The member tuple in which the attribute is to be found</param>
+        /// <param name="attribute">The attribute to be returned if found</param>
+        /// <returns>Returns true or false based on if the attribute was found or not</returns>
+        public static bool TryGetAttribute<T>(this (MemberInfo, object, string, Attribute[]) memberTuple, out T attribute) where T : Attribute
+        {
+            //Access all the attributes of the member
+            attribute = null;
+            var attributes = memberTuple.Item4;
+            if (attributes == null || attributes.Length == 0) return false;
+
+            //Try to find the typed attribute 
+            var foundAttribute = attributes
+                                            .Where(x => x.GetType().Equals(typeof(T)))
+                                            .FirstOrDefault();
+
+            //If the attribute was found return true else false
+            attribute = foundAttribute != null ? (T)foundAttribute : null;
+            return attribute != null;
         }
     }
 }
