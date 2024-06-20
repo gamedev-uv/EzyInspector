@@ -50,12 +50,13 @@ namespace UV.EzyInspector.Editors
         /// </summary>
         private bool _hideMonoScript;
 
+        public override bool RequiresConstantRepaint() => true;
+
         /// <summary>
         /// Initializes all the needed variables
         /// </summary>
         protected virtual void Init()
         {
-            _drawableMembers = target.GetSerializedMembers();
             _buttonMethods = target.GetMethodsWithAttribute<ButtonAttribute>();
             _onInspectorUpdatedMethods = target.GetMethodsWithAttribute<OnInspectorUpdatedAttribute>();
             _onTransformUpdated = target.GetMethodsWithAttribute<OnTransformUpdatedAttribute>();
@@ -64,6 +65,8 @@ namespace UV.EzyInspector.Editors
 
         public override void OnInspectorGUI()
         {
+            _drawableMembers = target.GetSerializedMembers();
+
             ManagerTransformUpdateMethods();
             DrawOpenScriptUI();
             DrawButtons(EditorDrawSequence.BeforeDefaultEditor);
@@ -154,8 +157,6 @@ namespace UV.EzyInspector.Editors
                 //Go to initial values
                 EditorGUI.indentLevel = indent;
                 GUI.enabled = guiState;
-
-                //Debug.Log($"{property.displayName} {string.Join(',', attributes.ToList())}");
 
                 //Check if the property has parent(s) 
                 if (propertyPath.Contains('.'))
@@ -251,7 +252,7 @@ namespace UV.EzyInspector.Editors
 
                 //Casts the fetched value back into the type value
                 var typedValue = value.ChangeType(targetValueType);
-                if (typedValue == null) return false;
+                if (typedValue == null) continue;
 
                 //Checks whether the values are the same or not
                 if (typedValue.Equals(targetValue))
