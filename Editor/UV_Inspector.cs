@@ -8,6 +8,7 @@ using Object = UnityEngine.Object;
 
 namespace UV.EzyInspector.Editors
 {
+    using System.Runtime.Remoting.Messaging;
     using UV.Utils;
     using UV.Utils.Editors;
 
@@ -39,6 +40,11 @@ namespace UV.EzyInspector.Editors
         protected Dictionary<MethodInfo, OnTransformUpdatedAttribute> _onTransformUpdated;
 
         /// <summary>
+        /// All the properties which have been successfully found
+        /// </summary>
+        protected Dictionary<string, SerializedProperty> _foundProperties;
+
+        /// <summary>
         /// All the properties which are disabled / readonly
         /// </summary>
         protected List<SerializedProperty> _disabledProperties;
@@ -60,6 +66,7 @@ namespace UV.EzyInspector.Editors
             _onInspectorUpdatedMethods = target.GetMethodsWithAttribute<OnInspectorUpdatedAttribute>();
             _onTransformUpdated = target.GetMethodsWithAttribute<OnTransformUpdatedAttribute>();
             _hideMonoScript = target.HasAttribute<HideMonoScriptAttribute>();
+            _foundProperties = new();
         }
 
         public override void OnInspectorGUI()
@@ -128,6 +135,25 @@ namespace UV.EzyInspector.Editors
         }
 
         /// <summary>
+        /// Returns the serialized property with the given propertyPath
+        /// </summary>
+        /// <param name="propertyPath">The path at which the property is to be found</param>
+        /// <returns>returns the serialized property if found else null</returns>
+        protected virtual SerializedProperty FindProperty(string propertyPath)
+        {
+            //Return the property if found in the dictionary
+            if (_foundProperties.ContainsKey(propertyPath)) return _foundProperties[propertyPath];
+
+            //Try finding the property under the serialized object 
+            var property = serializedObject.FindProperty(propertyPath);
+            if (property == null) return null;
+
+            //If the property is found add it to the dictionary
+            _foundProperties.Add(propertyPath, property);
+            return property;
+        }
+
+        /// <summary>
         /// Draws all the serialized memebers 
         /// </summary>
         protected virtual void DrawSerializedMembers()
@@ -139,30 +165,29 @@ namespace UV.EzyInspector.Editors
 
             foreach (var memberTuple in _drawableMembers)
             {
-                //Access variables from the tuple
-                var member = memberTuple.Item1;
-                var memberObj = memberTuple.Item2;
+                //Try finding the property
                 var memberPath = memberTuple.Item3;
-                var attributes = memberTuple.Item4;
-
-                //Fetch the property of the member 
                 var propertyPath = memberPath.Replace($"{target}.", "");
-                var property = serializedObject.FindProperty(propertyPath);
+                SerializedProperty property = FindProperty(propertyPath);
+
                 if (property == null)
                     continue;
+
+                //Access the other variables from the tuple
+                var member = memberTuple.Item1;
+                var memberObj = memberTuple.Item2;
+                var attributes = memberTuple.Item4;
 
                 //Go to initial values
                 EditorGUI.indentLevel = indent;
                 GUI.enabled = guiState;
-
-                //Debug.Log($"{property.displayName} {string.Join(',', attributes.ToList())}");
 
                 //Check if the property has parent(s) 
                 if (propertyPath.Contains('.'))
                 {
                     //Try to find the instant parent property 
                     var parentPropertyPath = propertyPath[..propertyPath.LastIndexOf('.')];
-                    var parentProperty = serializedObject.FindProperty(parentPropertyPath);
+                    var parentProperty = FindProperty(parentPropertyPath);
                     if (parentProperty != null && !parentProperty.isExpanded)
                     {
                         property.isExpanded = false;
@@ -176,6 +201,10 @@ namespace UV.EzyInspector.Editors
                                                     .FirstOrDefault() != null;
                     GUI.enabled = !readOnly;
                 }
+
+                //Check whether it has the hide in inspector if it does hide it 
+                if (memberTuple.HasAttribute<HideInInspector>())
+                    continue;
 
                 //If the member has the EditMode Attribute draw it accordingly 
                 if (memberTuple.TryGetAttribute(out EditModeOnly editMode) && Application.isPlaying)

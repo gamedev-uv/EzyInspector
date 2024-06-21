@@ -118,13 +118,40 @@ namespace UV.EzyInspector.Editors
             if (attributes == null || attributes.Length == 0) return false;
 
             //Try to find the typed attribute 
-            var foundAttribute = attributes
-                                            .Where(x => x.GetType().Equals(typeof(T)))
-                                            .FirstOrDefault();
+            T foundAttribute = null;
+            for (int i = 0; i < attributes.Length; i++)
+            {
+                foundAttribute = attributes[i] as T;
+                if (foundAttribute != null) break;
+            }
 
             //If the attribute was found return true else false
-            attribute = foundAttribute != null ? (T)foundAttribute : null;
+            attribute = foundAttribute ?? null;
             return attribute != null;
+        }
+
+        /// <summary>
+        /// Checks whether the given member has the attribute on it 
+        /// </summary>
+        /// <typeparam name="T">The type of attribute to find</typeparam>
+        /// <param name="memberTuple">The member tuple in which the attribute is to be found</param>
+        /// <returns>Returns true or false based on if the attribute was found or not</returns>
+        public static bool HasAttribute<T>(this (MemberInfo, object, string, Attribute[]) memberTuple) where T : Attribute
+        {
+            //Access all the attributes of the member
+            var attributes = memberTuple.Item4;
+            if (attributes == null || attributes.Length == 0) return false;
+
+            //Try to find the typed attribute 
+            T foundAttribute = null;
+            for (int i = 0; i < attributes.Length; i++)
+            {
+                foundAttribute = attributes[i] as T;
+                if (foundAttribute != null) break;
+            }
+
+            //If the attribute was found return true else false
+            return foundAttribute != null;
         }
     }
 }
