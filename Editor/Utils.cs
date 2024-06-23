@@ -1,11 +1,12 @@
-using System.Collections.Generic;
-using System.Reflection;
+using System;
+using System.Linq;
 using UnityEngine;
+using System.Reflection;
+using System.Collections.Generic;
+using Object = UnityEngine.Object;
 
 namespace UV.EzyInspector.Editors
 {
-    using System;
-    using System.Linq;
     using UV.Utils;
 
     /// <summary>
@@ -57,7 +58,7 @@ namespace UV.EzyInspector.Editors
         public static (MemberInfo, object, string, Attribute[])[] GetSerializedMembers(this Object obj)
         {
             List<(MemberInfo, object, string, Attribute[])> serializedMembers = new();
-            var members = obj.GetMembers(false);
+            var members = obj.GetMembers(true);
 
             foreach (var (member, memberObj, path, attributes) in members)
             {

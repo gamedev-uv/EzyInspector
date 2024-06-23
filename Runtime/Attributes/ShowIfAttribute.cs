@@ -6,6 +6,7 @@ namespace UV.EzyInspector
     /// <summary>
     /// Only displays a property based on the condition passed 
     /// </summary>
+    [AttributeUsage(AttributeTargets.Method | AttributeTargets.Field | AttributeTargets.Property)]
     public class ShowIfAttribute : PropertyAttribute
     {
         /// <summary>

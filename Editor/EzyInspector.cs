@@ -8,7 +8,6 @@ using Object = UnityEngine.Object;
 
 namespace UV.EzyInspector.Editors
 {
-    using System.Runtime.Remoting.Messaging;
     using UV.Utils;
     using UV.Utils.Editors;
 
@@ -17,17 +16,12 @@ namespace UV.EzyInspector.Editors
     /// </summary>
     [CanEditMultipleObjects]
     [CustomEditor(typeof(Object), true)]
-    public class UV_Inspector : Editor
+    public class EzyInspector : Editor
     {
         /// <summary>
         /// All the members which are to be drawn 
         /// </summary>
         protected (MemberInfo, object, string, Attribute[])[] _drawableMembers;
-
-        /// <summary>
-        /// All the methods which are to be drawn using buttons
-        /// </summary>
-        protected Dictionary<MethodInfo, ButtonAttribute> _buttonMethods;
 
         /// <summary>
         /// All the methods which are called when the inspector is updated
@@ -62,7 +56,6 @@ namespace UV.EzyInspector.Editors
         protected virtual void Init()
         {
             _drawableMembers = target.GetSerializedMembers();
-            _buttonMethods = target.GetMethodsWithAttribute<ButtonAttribute>();
             _onInspectorUpdatedMethods = target.GetMethodsWithAttribute<OnInspectorUpdatedAttribute>();
             _onTransformUpdated = target.GetMethodsWithAttribute<OnTransformUpdatedAttribute>();
             _hideMonoScript = target.HasAttribute<HideMonoScriptAttribute>();
@@ -73,9 +66,10 @@ namespace UV.EzyInspector.Editors
         {
             ManagerTransformUpdateMethods();
             DrawOpenScriptUI();
-            DrawButtons(EditorDrawSequence.BeforeDefaultEditor);
+            //DrawButtons(EditorDrawSequence.BeforeDefaultEditor);
             DrawDefaultUI();
-            DrawButtons(EditorDrawSequence.AfterDefaultEditor);
+            DrawSerializedMembers();
+            //DrawButtons(EditorDrawSequence.AfterDefaultEditor);
 
             //Apply modified properties and check if anything was updated 
             if (!serializedObject.ApplyModifiedProperties()) return;
@@ -119,7 +113,6 @@ namespace UV.EzyInspector.Editors
         protected virtual void DrawDefaultUI()
         {
             DrawPropertiesExcluding(serializedObject, _drawableMembers.Select(x => x.Item3).Append("m_Script").ToArray());
-            DrawSerializedMembers();
         }
 
         /// <summary>
@@ -166,15 +159,17 @@ namespace UV.EzyInspector.Editors
             foreach (var memberTuple in _drawableMembers)
             {
                 //Try finding the property
+                var member = memberTuple.Item1;
                 var memberPath = memberTuple.Item3;
+                bool isMethod = member is MethodInfo;
                 var propertyPath = memberPath.Replace($"{target}.", "");
                 SerializedProperty property = FindProperty(propertyPath);
 
-                if (property == null)
+                //If it is not method and the property is not found, continue 
+                if (!isMethod && property == null)
                     continue;
 
                 //Access the other variables from the tuple
-                var member = memberTuple.Item1;
                 var memberObj = memberTuple.Item2;
                 var attributes = memberTuple.Item4;
 
@@ -183,15 +178,18 @@ namespace UV.EzyInspector.Editors
                 GUI.enabled = guiState;
 
                 //Check if the property has parent(s) 
-                if (propertyPath.Contains('.'))
+                if (!isMethod && propertyPath.Contains('.'))
                 {
                     //Try to find the instant parent property 
                     var parentPropertyPath = propertyPath[..propertyPath.LastIndexOf('.')];
                     var parentProperty = FindProperty(parentPropertyPath);
-                    if (parentProperty != null && !parentProperty.isExpanded)
+                    if (parentProperty != null)
                     {
-                        property.isExpanded = false;
-                        continue;
+                        if(!parentProperty.isExpanded || _disabledProperties.Contains(parentProperty))
+                        {
+                            _disabledProperties.Add(property);
+                            continue;
+                        }
                     }
 
                     //Change indent level and readonly based on the parent 
@@ -206,6 +204,32 @@ namespace UV.EzyInspector.Editors
                 if (memberTuple.HasAttribute<HideInInspector>())
                     continue;
 
+                //Check if member has ShowIfAttribute attribute and draw it accordingly 
+                if (memberTuple.TryGetAttribute(out ShowIfAttribute showIf))
+                {
+                    if (!CheckShowIfProperty(member, memberObj, showIf))
+                    {
+                        //If the member is to be hidden
+                        if (showIf.HideMode == HideMode.Hide)
+                        {
+                            if (!isMethod)
+                                _disabledProperties.Add(property);
+
+                            continue;
+                        }
+
+                        //If it is to be made readnly
+                        DrawReadOnly(property);
+                        continue;
+                    }
+                }
+
+                if (memberTuple.TryGetAttribute(out ButtonAttribute button))
+                {
+                    DrawButton(member as MethodInfo, button);
+                    continue;
+                }
+
                 //If the member has the EditMode Attribute draw it accordingly 
                 if (memberTuple.TryGetAttribute(out EditModeOnly editMode) && Application.isPlaying)
                 {
@@ -214,26 +238,15 @@ namespace UV.EzyInspector.Editors
                     continue;
                 }
 
-                //Check if member has ShowIfAttribute attribute and draw it accordingly 
-                if (memberTuple.TryGetAttribute(out ShowIfAttribute showIf))
-                {
-                    if (!CheckShowIfProperty(member, memberObj, showIf))
-                    {
-                        if (showIf.HideMode == HideMode.ReadOnly)
-                            DrawReadOnly(property);
-                        else
-                            property.isExpanded = false;
-
-                        continue;
-                    }
-                }
-
                 //Draw readonly members
                 if (memberTuple.HasAttribute<ReadOnlyAttribute>())
                 {
                     DrawReadOnly(property);
                     continue;
                 }
+
+                //Continue to the next one if the current memeber is a method and nothing has been drawn yet
+                if (isMethod) continue;
 
                 //Draw the member normally 
                 EditorGUILayout.PropertyField(property, property.isArray);
@@ -305,22 +318,6 @@ namespace UV.EzyInspector.Editors
             EditorGUILayout.PropertyField(property, property.isArray);
             EditorGUI.EndDisabledGroup();
             serializedObject.ApplyModifiedProperties();
-        }
-
-        /// <summary>
-        /// Draws all the method buttons on the inspector 
-        /// </summary>
-        /// <param propertyPath="drawSequence">The sequence for which the buttons are to be drawn</param>
-        protected virtual void DrawButtons(EditorDrawSequence drawSequence)
-        {
-            if (_buttonMethods == null || _buttonMethods.Count == 0) return;
-
-            foreach (var methodButton in _buttonMethods)
-            {
-                var button = methodButton.Value;
-                if (!button.DrawSequence.Equals(drawSequence)) continue;
-                DrawButton(methodButton.Key, button);
-            }
         }
 
         /// <summary>
