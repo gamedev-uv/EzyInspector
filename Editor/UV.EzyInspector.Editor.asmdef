@@ -2,9 +2,8 @@
     "name": "UV.EzyInspector.Editor",
     "rootNamespace": "UV.EzyInspector.Editors",
     "references": [
-        "GUID:3fd7c71b50c807d4abe3f696fdc78113",
-        "GUID:efb39589f68eb8f43bda568832d8e518",
-        "GUID:ba53c5584dfadca4bb7b54b559778f88"
+        "GUID:ba53c5584dfadca4bb7b54b559778f88",
+        "GUID:fca8136c97091824cbe6afe2acbb3e94"
     ],
     "includePlatforms": [
         "Editor"

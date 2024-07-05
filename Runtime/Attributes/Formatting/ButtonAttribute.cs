@@ -6,7 +6,7 @@ namespace UV.EzyInspector
     /// Used to draw buttons in the inspector
     /// </summary>
     [AttributeUsage(AttributeTargets.Method, AllowMultiple = false)]
-    public class ButtonAttribute : Attribute
+    public class ButtonAttribute : SerializeMemberAttribute
     {
         /// <summary>
         /// The display name of the button
@@ -22,7 +22,6 @@ namespace UV.EzyInspector
         /// Draws a button in the inspector
         /// </summary>
         /// <param name="buttonName">The name of button</param>
-        /// <param name="editorDrawSequence">The target draw sequence of the button</param>
         public ButtonAttribute(string buttonName)
         {
             DisplayName = buttonName;
