@@ -108,15 +108,12 @@ using UV.EzyInspector;
 
 public class LabelExample : MonoBehaviour
 {
-    [SerializeField]
     [Label("Current Health: {0}")]
     private int health = 100;
 
-    [SerializeField]
     [Label("{0} Value: {1}")]
     private float floatValue = 3.5f;
 
-    [SerializeField]
     [Label("{0} is {1}")]
     private string playerName = "Player1";
 }

@@ -6,9 +6,9 @@ namespace UV.EzyInspector
     /// Draws a label with the value of member
     /// </summary>
     [AttributeUsage(AttributeTargets.Field | AttributeTargets.Property, AllowMultiple = false)]
-    public class Label : SerializeMemberAttribute
+    public class DisplayAsLabel : SerializeMemberAttribute
     {
-        public Label(string formattedString = "{0} : {1}")
+        public DisplayAsLabel(string formattedString = "{0} : {1}")
         {
             FormattedString = formattedString;
         }

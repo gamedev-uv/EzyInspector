@@ -49,7 +49,7 @@ namespace UV.EzyInspector
         /// <returns>Return true or false based on if it is serialized or not</returns>
         public bool IsSerialized()
         {
-            return HasAttribute<SerializeField>() || HasAttribute<SerializeReference>() || IsPublic();
+            return HasAttribute<SerializeField>() || HasAttribute<SerializeReference>() || HasAttribute<SerializeMemberAttribute>() || IsPublic();
         }
 
         /// <summary>
@@ -120,8 +120,9 @@ namespace UV.EzyInspector
         /// </summary>
         /// <param name="target">The target for this member</param>
         /// <param name="serializedObject">The current serializedObject</param>
+        /// <param name="includeMethods">Whether methods are to be included or not</param>
         /// <returns>Returns all the members which are to be drawn on the inspector</returns>
-        public InspectorMember[] GetDrawableMembers(Object target, SerializedObject serializedObject)
+        public InspectorMember[] GetDrawableMembers(Object target, SerializedObject serializedObject, bool includeMethods = true)
         {
             FindChildren();
             var children = GetChildren<InspectorMember>();
@@ -134,6 +135,7 @@ namespace UV.EzyInspector
                 //If it is a method
                 if (member.MemberInfo is MethodInfo)
                 {
+                    if (!includeMethods) continue;
                     if (!member.HasAttribute<SerializeMemberAttribute>()) continue;
                     drawableMembers.Add(member);
                     continue;
@@ -148,7 +150,7 @@ namespace UV.EzyInspector
 
                 //If found find all under its children
                 drawableMembers.Add(member);
-                drawableMembers.AddRange(member.GetDrawableMembers(target, serializedObject));
+                drawableMembers.AddRange(member.GetDrawableMembers(target, serializedObject, includeMethods));
             }
 
             return drawableMembers.ToArray();

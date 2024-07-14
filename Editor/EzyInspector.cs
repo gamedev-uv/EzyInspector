@@ -6,6 +6,7 @@ using Object = UnityEngine.Object;
 namespace UV.EzyInspector.Editors
 {
     using EzyReflection;
+    using UnityEngine.UIElements;
 
     /// <summary>
     /// A overriden inspector 
@@ -138,10 +139,21 @@ namespace UV.EzyInspector.Editors
                         member.IsReadOnly = !canShow;
                 }
 
+                //If the member has the EditMode Attribute draw it accordingly 
+                if (member.TryGetAttribute(out EditModeOnly editMode) && Application.isPlaying)
+                {
+                    if (editMode.HideMode == HideMode.Hide) member.IsHidden = true;
+                    if (editMode.HideMode == HideMode.ReadOnly) member.IsReadOnly = true;
+                }
+
                 //Draw a button for the method
                 if (member.TryGetAttribute(out ButtonAttribute button))
                 {
-                    DrawButton(memberInfo as MethodInfo, button);
+                    //Skips methods if the object is an Object Reference 
+                    var isNestedObjectMethod = member.ParentObject is Object @object && @object != target;
+                    if (isNestedObjectMethod) continue;
+
+                    DrawButton(member.ParentObject, memberInfo as MethodInfo, button);
                     continue;
                 }
 
@@ -149,18 +161,36 @@ namespace UV.EzyInspector.Editors
                 if (member.IsMemberHidden() || member.HasAttribute<HideInInspector>())
                     continue;
 
-
-                //If it is a label
-                if (member.TryGetAttribute(out Label label))
-                    GUILayout.Label(label.FormattedString
-                                                        .Replace("{0}", member.Name)
-                                                        .Replace("{1}", $"{member.GetValue()}"));
-
-                //If the member has the EditMode Attribute draw it accordingly 
-                if (member.TryGetAttribute(out EditModeOnly editMode) && Application.isPlaying)
+                //If it has the GUID attribute on it
+                if (member.HasAttribute<GUIDAttribute>())
                 {
-                    if (editMode.HideMode == HideMode.Hide) continue;
-                    DrawReadOnly(property);
+                    if (target is not ScriptableObject SO)
+                    {
+                        EditorGUILayout.HelpBox("[GUID] can only be used on members under a Scriptable Object", MessageType.Error);
+                        continue;
+                    }
+
+                    if (property.propertyType != SerializedPropertyType.String)
+                    {
+                        EditorGUILayout.HelpBox("[GUID] can only be used on strings!", MessageType.Error);
+                        return;
+                    }
+
+                    //Fetch the GUID and assign it back to the property 
+                    property.stringValue = AssetDatabase.AssetPathToGUID(AssetDatabase.GetAssetPath(SO));
+
+                    //Draw the Copy button
+                    EditorGUILayout.BeginHorizontal();
+                    if(GUILayout.Button("Copy GUID"))
+                        GUIUtility.systemCopyBuffer = property.stringValue;
+
+                    //Draw the disabled property 
+                    EditorGUI.BeginDisabledGroup(true);
+                    EditorGUILayout.PropertyField(property, new(""), property.isArray);
+
+                    //Go to the next member
+                    EditorGUI.EndDisabledGroup();
+                    EditorGUILayout.EndHorizontal();
                     continue;
                 }
 
@@ -168,6 +198,15 @@ namespace UV.EzyInspector.Editors
                 if (member.IsReadOnly || member.HasAttribute<ReadOnlyAttribute>())
                 {
                     DrawReadOnly(property);
+                    continue;
+                }
+
+                //If it is a label
+                if (member.TryGetAttribute(out DisplayAsLabel label))
+                {
+                    GUILayout.Label(label.FormattedString
+                                                       .Replace("{0}", member.Name)
+                                                       .Replace("{1}", $"{member.GetValue()}"));
                     continue;
                 }
 
@@ -226,6 +265,7 @@ namespace UV.EzyInspector.Editors
         protected virtual void DrawReadOnly(SerializedProperty property)
         {
             if (property == null) return;
+
             EditorGUI.BeginDisabledGroup(true);
             EditorGUILayout.PropertyField(property, property.isArray);
             EditorGUI.EndDisabledGroup();
@@ -235,14 +275,15 @@ namespace UV.EzyInspector.Editors
         /// <summary>
         /// Draws a button in the inspector for the given method styled by the button attribute
         /// </summary>
+        /// <param propertyPath="method">The parent object which conatains the method to be drawn</param>
         /// <param propertyPath="method">The method to be drawn</param>
         /// <param propertyPath="button">The button used to style the ui</param>
-        protected virtual void DrawButton(MethodInfo method, ButtonAttribute button)
+        protected virtual void DrawButton(object parent, MethodInfo method, ButtonAttribute button)
         {
             string buttonName = button.DisplayName ?? method.Name;
             if (GUILayout.Button(buttonName))
             {
-                method?.Invoke(target, null);
+                method?.Invoke(parent, null);
                 EditorUtility.SetDirty(this);
             }
 
