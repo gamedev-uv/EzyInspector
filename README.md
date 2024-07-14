@@ -54,19 +54,6 @@ Used to draw buttons in the Unity inspector. This attribute allows methods to be
    - **Parameters:**
      - `buttonName` (string): The display name of the button.
 
-**`ButtonAttribute(EditorDrawSequence editorDrawSequence)`**
-   Creates a button without a display name, specifying the sequence in which it should be drawn relative to other editor elements.
-   - **Parameters:**
-     - `editorDrawSequence` (EditorDrawSequence): The target draw sequence of the button.
-       - `EditorDrawSequence.BeforeDefaultEditor`: Draws the button before the default editor elements.
-       - `EditorDrawSequence.AfterDefaultEditor`: Draws the button after the default editor elements.
-
-**`ButtonAttribute(string buttonName, EditorDrawSequence editorDrawSequence)`**
-   Creates a button with a specified display name and draw sequence.
-   - **Parameters:**
-     - `buttonName` (string): The display name of the button.
-     - `editorDrawSequence` (EditorDrawSequence): The target draw sequence of the button.
-
 ```cs
 using UnityEngine;
 using UV.EzyInspector;
@@ -78,18 +65,6 @@ public class ExampleButtonScript : MonoBehaviour
     {
         Debug.Log("Custom button clicked!");
     }
-
-    [Button(EditorDrawSequence.BeforeDefaultEditor)]
-    private void ButtonBeforeOther()
-    {
-        Debug.Log("Button drawn before default editor elements!");
-    }
-
-    [Button("Sequence Button", EditorDrawSequence.AfterDefaultEditor)]
-    private void ButtonWithSequence()
-    {
-        Debug.Log("Button drawn after default editor elements!");
-    }
 }
 ```
 
@@ -99,6 +74,8 @@ Draws a label with the value of member in the Unity inspector.
 
 **`Label(string formattedString = "{0} : {1}")`**
    Draws a label with a formatted string displaying the member's name and value.
+   ``{0}`` gets replaced by the member's name 
+   ``{1}`` gets replaced by the member's value
    - **Parameters:**
      - `formattedString` (string): The format string for displaying the label text.
 
@@ -154,15 +131,16 @@ Attributes that affect how data is serialized or represented in Unity.
 
 #### GUID
 
-Saves the Unity GUID of the current target object to a given string.
+Saves the Unity GUID of the current Scriptable Object to the given string.
 
 ```cs
 using UnityEngine;
 using UV.EzyInspector;
 
-public class ExampleGUIDScript : MonoBehaviour
+[CreateAssetMenu(...)]
+public class ExampleGUIDScript : ScriptableObject
 {
-    [SerializeField, GUID] private string objectGUID; 
+    [SerializeField, GUID] private string _objectGUID;
 }
 ```
 
@@ -243,15 +221,32 @@ using UV.EzyInspector;
 public class ShowIfExample : MonoBehaviour
 {
     [SerializeField]
-    private bool showProperty = true;
+    private bool _showProperty = true;
 
-    [SerializeField, ShowIf(nameof(showProperty))]
-    private int conditionalProperty = 50;
+    [SerializeField]
+    [ShowIf(nameof(_showProperty), true)]
+    private int _conditionalProperty = 50;
 
-    [SerializeField, ShowIf(nameof(showProperty), HideMode.ReadOnly, false)]
-    private string readOnlyProperty = "Read Only when showProperty is false!";
+    [SerializeField]
+    [ShowIf(nameof(_complexCondition), HideMode.ReadOnly, true)]
+    private string _readOnlyProperty = "Read Only when _complexCondition is true!";
+
+    //An example of a complex condition 
+    private bool _complexCondition => _showProperty && _conditionalProperty > 50;
+
+    //Only shows up when the _conditionalProperty is equal to 1
+    [SerializeField, ShowIf("_conditionalProperty", 1)]
+    private int _intDependent;
+
+    //Only shows up when the _conditionalProperty is equal to 2 or 5
+    [SerializeField, ShowIf("_conditionalProperty", 2, 5)]
+    private int _multipleIntDependent;
+   
 }
 ```
+**🛈 Here integers and booleans have been used but you can compare multiple values of any type.**
+
+**⚠️ You can directly pass in the name of the property as shown in the last 2 examples but usage of ``nameof`` would be suggested**
 
 ## Callback
 

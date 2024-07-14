@@ -4,10 +4,13 @@
   "displayName": "Ezy Inspector",
   "description": "A package targeted to make styling the editor easier!",
   "unity": "2019.1",
+  "documentationUrl": "https://github.com/gamedev-uv/EzyInspector",
+  "changelogUrl": "https://github.com/gamedev-uv/EzyInspector/commits",
+  "licensesUrl": "https://github.com/gamedev-uv/EzyInspector/blob/main/LICENSE",
   "author": {
     "name": "UV",
     "email": "yuvraj12611@gmail.com",
-    "url": ""
+    "url": "https://github.com/gamedev-uv"
   },
   "dependencies": {
     "com.uv.ezy-reflection": "1.0.0"
