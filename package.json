@@ -10,6 +10,13 @@
     "url": ""
   },
   "dependencies": {
-    "com.uv.ezy-reflection": "1.0.0" 
-  }
+    "com.uv.ezy-reflection": "1.0.0"
+  },
+  "samples": [
+    {
+      "displayName": "Basic Sample",
+      "description": "Contains sample scripts showcasing the package",
+      "path": "Samples/EzyInspectorSamples"
+    }
+  ]
 }
