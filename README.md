@@ -11,7 +11,7 @@
 - [Attributes](#attributes)
   - [Formatting](#formatting)
     - [Button](#button)
-    - [Label](#label)
+    - [DisplayAsLabel](#displayaslabel)
     - [ReadOnly](#readonly)
     - [HideMonoScript](#hidemonoscript)
   - [Serialization](#serialization)
@@ -68,11 +68,11 @@ public class ExampleButtonScript : MonoBehaviour
 }
 ```
 
-#### Label
+#### DisplayAsLabel
 
 Draws a label with the value of member in the Unity inspector.
 
-**`Label(string formattedString = "{0} : {1}")`**
+**`DisplayAsLabel(string formattedString = "{0} : {1}")`**
    Draws a label with a formatted string displaying the member's name and value.
    ``{0}`` gets replaced by the member's name 
    ``{1}`` gets replaced by the member's value
@@ -85,14 +85,9 @@ using UV.EzyInspector;
 
 public class LabelExample : MonoBehaviour
 {
-    [Label("Current Health: {0}")]
-    private int health = 100;
+    [SerializeField] private int _age = 18;
 
-    [Label("{0} Value: {1}")]
-    private float floatValue = 3.5f;
-
-    [Label("{0} is {1}")]
-    private string playerName = "Player1";
+    [DisplayAsLabel("Qualified : {1}")] private bool _isQualified => _age >= 18;
 }
 ```
 
