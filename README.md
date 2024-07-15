@@ -4,24 +4,50 @@
 
 **Makes working and customizing the inspector easier!**
 
-## Table of Contents
+<details>
+  <summary style="font-size: 30px;">Table of Contents</summary>
 
-- [Installation](#installation)
-- [Dependencies](#dependencies)
-- [Attributes](#attributes)
-  - [Formatting](#formatting)
-    - [Button](#button)
-    - [DisplayAsLabel](#displayaslabel)
-    - [ReadOnly](#readonly)
-    - [HideMonoScript](#hidemonoscript)
-  - [Serialization](#serialization)
-    - [GUID](#guid)
-    - [ForceInterface](#forceinterface)
-  - [Conditional](#conditional)
-    - [EditModeOnly](#editmodeonly)
-    - [ShowIf](#showif)
-  - [Callback](#callback)
-    - [OnInspectorUpdated](#oninspectorupdated)
+  - [Installation](#installation)
+  - [Dependencies](#dependencies)
+  - [Attributes](#attributes)
+    <details>
+      <summary><a href="#formatting">Formatting</a></summary>
+
+      - [HideMonoGUI](#hidemonogui)
+
+      - [DefaultMonoGUI](#defaultmonogui)
+
+      - [Button](#button)
+
+      - [DisplayAsLabel](#displayaslabel)
+
+      - [ReadOnly](#readonly)
+
+    </details>
+    <details>
+      <summary><a href="#serialization">Serialization</a></summary>
+
+      - [GUID](#guid)
+
+      - [ForceInterface](#forceinterface)
+
+    </details>
+    <details>
+      <summary><a href="#conditional">Conditional</a></summary>
+
+      - [EditModeOnly](#editmodeonly)
+
+      - [ShowIf](#showif)
+
+    </details>
+    <details>
+      <summary><a href="#callbacks">Callbacks</a></summary>
+
+      - [OnInspectorUpdated](#oninspectorupdated)
+
+    </details>
+</details>
+
 
 # 💿 Installation
 :warning: This package requires the [**EzyReflection**](https://github.com/gamedev-uv/EzyReflection) package in order to function. Make sure you install that package before installing this one.
@@ -38,14 +64,36 @@ https://github.com/gamedev-uv/EzyInspector.git
 # Dependencies 
  - [**EzyReflection**](https://github.com/gamedev-uv/EzyReflection)
 
-
 # Attributes
 
 ## Formatting
 
 Attributes that affect how data is displayed or formatted in the inspector.
 
-#### Button
+### HideMonoGUI
+
+Hides the open script UI from the inspector.
+
+```cs
+using UnityEngine;
+using UV.EzyInspector;
+
+[HideMonoScript]
+public class ExampleHideMonoScript : MonoBehaviour {...}
+```
+
+### DefaultMonoGUI
+Draws the default MonoScript GUI in the inspector.
+
+```cs
+using UnityEngine;
+using UV.EzyInspector;
+
+[DefaultMonoGUI]
+public class ExampleDefaultMonoGUI : MonoBehaviour {...}
+```
+
+### Button
 
 Used to draw buttons in the Unity inspector. This attribute allows methods to be displayed as buttons in the Unity editor interface.
 
@@ -68,7 +116,7 @@ public class ExampleButtonScript : MonoBehaviour
 }
 ```
 
-#### DisplayAsLabel
+### DisplayAsLabel
 
 Draws a label with the value of member in the Unity inspector.
 
@@ -91,7 +139,7 @@ public class LabelExample : MonoBehaviour
 }
 ```
 
-#### ReadOnly
+### ReadOnly
 
 Makes the member readonly in the inspector.
 
@@ -105,26 +153,11 @@ public class ReadOnlyExample : MonoBehaviour
 }
 ```
 
-#### HideMonoScript
-
-Hides the open script UI from the inspector.
-
-```cs
-using UnityEngine;
-using UV.EzyInspector;
-
-[HideMonoScript]
-public class ExampleHideMonoScript : MonoBehaviour
-{
-        
-}
-```
-
 ## Serialization
 
 Attributes that affect how data is serialized or represented in Unity.
 
-#### GUID
+### GUID
 
 Saves the Unity GUID of the current Scriptable Object to the given string.
 
@@ -139,7 +172,7 @@ public class ExampleGUIDScript : ScriptableObject
 }
 ```
 
-#### ForceInterface
+### ForceInterface
 
 Force draws a specified interface in the Unity inspector for a field.
 
@@ -166,7 +199,7 @@ public class ExampleForceInterface : MonoBehaviour
 
 Attributes that conditionally display or hide inspector elements.
 
-#### EditModeOnly
+### EditModeOnly
 
 Hides the member when not in edit mode.
 
@@ -195,7 +228,7 @@ public class ExampleEditModeScript : MonoBehaviour
 }
 ```
 
-#### ShowIf
+### ShowIf
 
 Only displays a property based on the condition passed.
 
@@ -243,11 +276,11 @@ public class ShowIfExample : MonoBehaviour
 
 **⚠️ You can directly pass in the name of the property as shown in the last 2 examples but usage of ``nameof`` would be suggested**
 
-## Callback
+## Callbacks
 
 Attributes that trigger callbacks based on editor events.
 
-#### OnInspectorUpdated
+### OnInspectorUpdated
 
 Calls the method when the inspector of the object is updated.
 
