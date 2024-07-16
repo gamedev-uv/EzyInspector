@@ -4,8 +4,7 @@
 
 **Makes working and customizing the inspector easier!**
 
-<details>
-  <summary style="font-size: 30px;">Table of Contents</summary>
+# Table of Contents
 
   - [Installation](#installation)
   - [Dependencies](#dependencies)
@@ -46,7 +45,6 @@
       - [OnInspectorUpdated](#oninspectorupdated)
 
     </details>
-</details>
 
 
 # 💿 Installation
