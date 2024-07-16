@@ -224,46 +224,6 @@ namespace UV.EzyInspector.Editors
                 if (member.IsMemberHidden() || member.HasAttribute<HideInInspector>())
                     continue;
 
-                //If it has the GUID attribute on it
-                if (member.HasAttribute<GUIDAttribute>())
-                {
-                    if (target is not ScriptableObject SO)
-                    {
-                        EditorGUILayout.HelpBox("[GUID] can only be used on members under a Scriptable Object", MessageType.Error);
-                        continue;
-                    }
-
-                    if (property.propertyType != SerializedPropertyType.String)
-                    {
-                        EditorGUILayout.HelpBox("[GUID] can only be used on strings!", MessageType.Error);
-                        return;
-                    }
-
-                    //Fetch the GUID and assign it back to the property 
-                    property.stringValue = AssetDatabase.AssetPathToGUID(AssetDatabase.GetAssetPath(SO));
-
-                    //Draw the Copy button
-                    EditorGUILayout.BeginHorizontal();
-                    if (GUILayout.Button("Copy GUID"))
-                        GUIUtility.systemCopyBuffer = property.stringValue;
-
-                    //Draw the disabled property 
-                    EditorGUI.BeginDisabledGroup(true);
-                    EditorGUILayout.PropertyField(property, new(""), property.isArray);
-
-                    //Go to the next member
-                    EditorGUI.EndDisabledGroup();
-                    EditorGUILayout.EndHorizontal();
-                    continue;
-                }
-
-                //Draw readonly members
-                if (member.IsReadOnly || member.HasAttribute<ReadOnlyAttribute>())
-                {
-                    DrawReadOnly(property);
-                    continue;
-                }
-
                 //If it is a label
                 if (member.TryGetAttribute(out DisplayAsLabel label))
                 {
@@ -273,10 +233,26 @@ namespace UV.EzyInspector.Editors
                     continue;
                 }
 
-                //Draw the member normally if it has a SerializedProperty for it
-                if (property == null) continue;
-                EditorGUILayout.PropertyField(property, property.isArray);
+                //Draw the member
+                DrawMember(member);
             }
+        }
+
+        /// <summary>
+        /// Draws the given member
+        /// </summary>
+        /// <param name="member">The member which is to be drawn</param>
+        public virtual void DrawMember(InspectorMember member)
+        {
+            //Check whether the member has a SerializedProperty associated with it
+            var property = member.MemberProperty;
+            if (property == null) return;
+
+            //Disable it if needed
+            EditorGUI.BeginDisabledGroup(member.IsReadOnly || member.HasAttribute<ReadOnlyAttribute>());
+            EditorGUILayout.PropertyField(property, property.isArray);
+            EditorGUI.EndDisabledGroup();
+            serializedObject.ApplyModifiedProperties();
         }
 
         protected virtual bool CorrectShowIfValue(InspectorMember member, ShowIfAttribute showIf)
@@ -319,20 +295,6 @@ namespace UV.EzyInspector.Editors
             }
 
             return false;
-        }
-
-        /// <summary>
-        /// Draws the readonly property drawer for the property
-        /// </summary>
-        /// <param propertyPath="property">The property to be drawn</param>
-        protected virtual void DrawReadOnly(SerializedProperty property)
-        {
-            if (property == null) return;
-
-            EditorGUI.BeginDisabledGroup(true);
-            EditorGUILayout.PropertyField(property, property.isArray);
-            EditorGUI.EndDisabledGroup();
-            serializedObject.ApplyModifiedProperties();
         }
 
         /// <summary>
