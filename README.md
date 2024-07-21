@@ -1,4 +1,4 @@
-![](README/header.png)
+![](.README/header.png)
 
 # EzyInspector [![License: MIT](https://img.shields.io/badge/License-MIT-brightgreen.svg)](https://github.com/gamedev-uv/EzyInspector/blob/main/LICENSE)
 
