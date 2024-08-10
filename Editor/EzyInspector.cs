@@ -1,3 +1,4 @@
+﻿using System;
 using UnityEditor;
 using UnityEngine;
 using System.Reflection;
@@ -6,6 +7,7 @@ using Object = UnityEngine.Object;
 namespace UV.EzyInspector.Editors
 {
     using EzyReflection;
+    using System.Linq;
 
     /// <summary>
     /// A overriden inspector 
@@ -77,7 +79,7 @@ namespace UV.EzyInspector.Editors
         public override void OnInspectorGUI()
         {
             DrawMonoScriptUI();
-            DrawSerializedMembers();
+            DrawSerializedMembers(RootMember);
 
             //Apply modified properties and check if anything was updated 
             if (!serializedObject.ApplyModifiedProperties()) return;
@@ -114,71 +116,97 @@ namespace UV.EzyInspector.Editors
                 return;
             }
 
-            GUILayout.BeginHorizontal();
-
-            //Draw the open script button
-            var openGUI = EditorGUIUtility.IconContent("d_boo Script Icon");
-            openGUI.text = "Open Script";
-            openGUI.tooltip = "Opens the script in the specified External Script Editor";
-            DrawButton(openGUI,
-            () =>
+            using (new EditorGUILayout.HorizontalScope(EditorStyles.helpBox))
             {
-                AssetDatabase.OpenAsset(TargetMono);
-            },
-            GUILayout.Height(EditorGUIUtility.singleLineHeight));
+                //Draw the open script button
+                var openGUI = EditorGUIUtility.IconContent("d_boo Script Icon");
+                openGUI.text = "Open Script";
+                openGUI.tooltip = "Opens the script in the specified External Script Editor";
+                this.DrawButton(openGUI,
+                () =>
+                {
+                    AssetDatabase.OpenAsset(TargetMono);
+                },
+                GUILayout.Height(EditorGUIUtility.singleLineHeight));
 
-            //Draw the ping script button
-            var pingGUI = EditorGUIUtility.IconContent("d_Folder Icon");
-            pingGUI.tooltip = "Ping Script\nPings the script in the Project folder";
-            DrawButton(pingGUI, () =>
-            {
-                EditorUtility.FocusProjectWindow();
-                EditorGUIUtility.PingObject(TargetMono);
-            },
-            GUILayout.Height(EditorGUIUtility.singleLineHeight),
-            GUILayout.Width(EditorGUIUtility.singleLineHeight * 2));
+                //Draw the ping script button
+                var pingGUI = EditorGUIUtility.IconContent("d_Folder Icon");
+                pingGUI.tooltip = "Ping Script\nPings the script in the Project folder";
+                this.DrawButton(pingGUI, () =>
+                {
+                    EditorUtility.FocusProjectWindow();
+                    EditorGUIUtility.PingObject(TargetMono);
+                },
+                GUILayout.Height(EditorGUIUtility.singleLineHeight),
+                GUILayout.Width(EditorGUIUtility.singleLineHeight * 2));
 
-            //Draw the select script button
-            var selectGUI = EditorGUIUtility.IconContent("d_Selectable Icon");
-            selectGUI.tooltip = "Select Script\nSelect the given script";
-            DrawButton(selectGUI, () =>
-            {
-                EditorUtility.FocusProjectWindow();
-                Selection.activeObject = TargetMono;
-                EditorGUIUtility.PingObject(TargetMono);
-            },
-            GUILayout.Height(EditorGUIUtility.singleLineHeight),
-            GUILayout.Width(EditorGUIUtility.singleLineHeight * 2));
-
-            GUILayout.EndHorizontal();
+                //Draw the select script button
+                var selectGUI = EditorGUIUtility.IconContent("d_Selectable Icon");
+                selectGUI.tooltip = "Select Script\nSelect the given script";
+                this.DrawButton(selectGUI, () =>
+                {
+                    EditorUtility.FocusProjectWindow();
+                    Selection.activeObject = TargetMono;
+                    EditorGUIUtility.PingObject(TargetMono);
+                },
+                GUILayout.Height(EditorGUIUtility.singleLineHeight),
+                GUILayout.Width(EditorGUIUtility.singleLineHeight * 2));
+            }
             GUILayout.Space(10);
         }
 
         /// <summary>
-        /// Draws a button on the inspector with the given gui content 
+        /// Draws the given member
         /// </summary>
-        /// <param name="buttonGUI">The gui content for the button</param>
-        /// <param name="onButtonPressed">The action which is to be called when the button is pressed</param>
-        /// <param name="layoutOptions">The GUILayoutOptions for the button</param>
-        protected virtual void DrawButton(GUIContent buttonGUI, System.Action onButtonPressed = null, params GUILayoutOption[] layoutOptions)
+        /// <param name="member">The member which is to be drawn</param>
+        protected virtual bool DrawMember(InspectorMember member)
         {
-            if (GUILayout.Button(buttonGUI, layoutOptions))
-                onButtonPressed?.Invoke();
+            //Check whether the member has a SerializedProperty associated with it
+            var property = member.MemberProperty;
+            if (property == null) return false;
+
+            //Disable it if needed
+            EditorGUI.BeginDisabledGroup(member.IsReadOnly || member.HasAttribute<ReadOnlyAttribute>());
+            if (property.isArray && property.name.StartsWith("_"))
+                DrawArray(property, member);
+            else
+                EditorGUILayout.PropertyField(property, property.isArray);
+
+            EditorGUI.EndDisabledGroup();
+            return property.serializedObject.ApplyModifiedProperties();
         }
 
         /// <summary>
-        /// Draws all the serialized memebers 
+        /// Draws all serialized members under the given rootMember
         /// </summary>
-        protected virtual void DrawSerializedMembers()
+        /// <param name="rootMember">The root member which contains the drawableMembers</param>
+        /// <param name="includeMethods">Whether methods are to be drawn or not</param>
+        /// <param name="includeSelf">Whether the root member is to be drawn or not</param>
+        /// <returns>Returns true or false based on if a property was updated or not</returns>
+        protected virtual bool DrawSerializedMembers(InspectorMember rootMember, bool includeMethods = true, bool includeSelf = false)
         {
-            if (DrawableMembers == null || DrawableMembers.Length == 0) return;
+            var members = rootMember.GetDrawableMembers(target, serializedObject, includeMethods);
+            if (includeSelf)
+                members = members.Append(rootMember).ToArray();
+            return DrawSerializedMembers(rootMember, members);
+        }
+
+        /// <summary>
+        /// Draws all given serialized members 
+        /// </summary>
+        /// <param name="rootMember">The root member which contains the drawableMembers</param>
+        /// <param name="drawableMembers">The members which are to be drawn</param>
+        /// <returns>Returns true or false based on if a property was updated or not</returns>
+        protected virtual bool DrawSerializedMembers(Member rootMember, InspectorMember[] drawableMembers)
+        {
+            if (drawableMembers == null || drawableMembers.Length == 0) return false;
 
             var indent = EditorGUI.indentLevel;
             var guiState = GUI.enabled;
 
-            for (int i = 0; i < DrawableMembers.Length; i++)
+            for (int i = 0; i < drawableMembers.Length; i++)
             {
-                var member = DrawableMembers[i];
+                var member = drawableMembers[i];
 
                 //Change indent level and readonly based on the parent 
                 EditorGUI.indentLevel = indent + member.Depth;
@@ -187,13 +215,10 @@ namespace UV.EzyInspector.Editors
                 var memberInfo = member.MemberInfo;
                 if (!member.IsParentExpanded()) continue;
 
-                //Try finding the property
-                SerializedProperty property = member.MemberProperty;
-
                 //Check if member has ShowIfAttribute attribute and draw it accordingly 
                 if (member.TryGetAttribute(out ShowIfAttribute showIf))
                 {
-                    var canShow = CorrectShowIfValue(member, showIf);
+                    var canShow = CorrectShowIfValue(rootMember, member, showIf);
 
                     if (showIf.HideMode == HideMode.Hide)
                         member.IsHidden = !canShow;
@@ -234,31 +259,208 @@ namespace UV.EzyInspector.Editors
                 }
 
                 //Draw the member
-                DrawMember(member);
+                if (DrawMember(member)) return true;
+            }
+
+            return serializedObject.ApplyModifiedProperties();
+        }
+
+        #region Array Drawing
+        /// <summary>
+        /// Draws the array property in the current inspector 
+        /// </summary>
+        /// <param name="arrayProperty">The array property</param>
+        /// <param name="member">The member of the array property</param>
+        protected virtual void DrawArray(SerializedProperty arrayProperty, InspectorMember member)
+        {
+            //Draw array header foldout 
+            using (new EditorGUILayout.HorizontalScope())
+            {
+                //Array foldout and size
+                arrayProperty.isExpanded = EditorGUILayout.BeginFoldoutHeaderGroup(arrayProperty.isExpanded, arrayProperty.displayName);
+                arrayProperty.arraySize = EditorGUILayout.IntField(arrayProperty.arraySize, GUILayout.Width(50));
+
+                //Clear list button
+                using (new EditorGUI.DisabledGroupScope(arrayProperty.arraySize == 0))
+                {
+                    GUIContent clearList = new(EditorGUIUtility.IconContent("d_winbtn_win_close@2x"))
+                    {
+                        tooltip = "Clear list"
+                    };
+                    if (GUILayout.Button(clearList, GUILayout.Width(20), GUILayout.Height(EditorGUIUtility.singleLineHeight)))
+                    {
+                        arrayProperty.ClearArray();
+                        arrayProperty.serializedObject.ApplyModifiedProperties();
+                    }
+                }
+            }
+
+            //Apply any changes that were made
+            arrayProperty.serializedObject.ApplyModifiedProperties();
+            if (arrayProperty.arraySize != member.ChildMembers.Length)
+                member.InitializeArray(target, serializedObject);
+
+            //If the array is expanded 
+            if (!arrayProperty.isExpanded)
+            {
+                EditorGUILayout.EndFoldoutHeaderGroup();
+                return;
+            }
+
+            //Styles and contents for buttons 
+            var style = new GUIStyle(EditorStyles.iconButton);
+            GUIContent addButton = new(EditorGUIUtility.IconContent("Toolbar Plus"))
+            {
+                tooltip = "Adds a new element to list"
+            };
+            GUIContent removeButton = new(EditorGUIUtility.IconContent("Toolbar Minus"))
+            {
+                tooltip = "Removes the last element from the list"
+            };
+
+            using (var backGroundBox = new EditorGUILayout.VerticalScope(EditorStyles.helpBox))
+            {
+                //Draw all the elements
+                DrawArrayElements(arrayProperty, member);
+            }
+
+            //Draw the array transformation buttons
+            var buttonRect = EditorGUILayout.GetControlRect();
+            buttonRect.x = buttonRect.width - 20 * 2.5f;
+            buttonRect.width = 20 * 1.5f;
+            buttonRect.width /= 2;
+
+            //Add button
+            if (GUI.Button(buttonRect, addButton, style))
+            {
+                arrayProperty.arraySize++;
+                arrayProperty.serializedObject.ApplyModifiedProperties();
+            }
+
+            //Remove button
+            using (new EditorGUI.DisabledGroupScope(arrayProperty.arraySize == 0))
+            {
+                buttonRect.x += buttonRect.width * 1.4f;
+                if (GUI.Button(buttonRect, removeButton, style))
+                {
+                    arrayProperty.arraySize--;
+                    arrayProperty.serializedObject.ApplyModifiedProperties();
+                }
+            }
+            EditorGUILayout.EndFoldoutHeaderGroup();
+            GUILayout.Space(10);
+        }
+
+        /// <summary>
+        /// Draws all the array elements for the given array property 
+        /// </summary>
+        /// <param name="arrayProperty">The array property for which the elements are to be drawn</param>
+        /// <param name="arrayMember">The member for the property</param>
+        protected virtual void DrawArrayElements(SerializedProperty arrayProperty, InspectorMember arrayMember)
+        {
+            //If it has zero elements 
+            if (arrayProperty.arraySize == 0)
+            {
+                EditorGUILayout.LabelField("List is empty");
+                return;
+            }
+
+            EditorGUI.indentLevel++;
+            var guiIndent = EditorGUI.indentLevel;
+
+            var elementType = arrayMember.MemberType.GetElementType();
+            var drawFoldout = !elementType.IsSimpleType() && !elementType.IsSubclassOf(typeof(Object));
+
+            //Draw the array elements 
+            for (int i = 0; i < arrayProperty.arraySize; i++)
+            {
+                EditorGUI.indentLevel = guiIndent;
+                var element = arrayProperty.GetArrayElementAtIndex(i);
+                var elementMember = arrayMember.ChildMembers[i] as InspectorMember;
+
+                //Draw the array element GUI
+                DrawArrayElement(element, elementMember,
+                arrayProperty, arrayMember,
+                drawFoldout,
+                () =>
+                {
+                    //If the element is to be deleted
+                    arrayProperty.DeleteArrayElementAtIndex(i);
+                    arrayProperty.serializedObject.ApplyModifiedProperties();
+                    return;
+                });
             }
         }
 
         /// <summary>
-        /// Draws the given member
+        /// Draws the inspector for the given array element 
         /// </summary>
-        /// <param name="member">The member which is to be drawn</param>
-        public virtual void DrawMember(InspectorMember member)
+        /// <param name="element">The array element for which the inspector is to be drawn</param>
+        /// <param name="elementMember">The member for the element property</param>
+        /// <param name="arrayProperty">The array property for which the elements are to be drawn</param>
+        /// <param name="arrayMember">The member for the array property</param>
+        /// <param name="wantsToDelete">The action which is to be called if the element is to be removed</param>
+        protected virtual void DrawArrayElement(SerializedProperty element, InspectorMember elementMember, SerializedProperty arrayProperty, InspectorMember arrayMember, bool drawFoldout, Action wantsToDelete)
         {
-            //Check whether the member has a SerializedProperty associated with it
-            var property = member.MemberProperty;
-            if (property == null) return;
+            drawFoldout = drawFoldout && element.propertyType == SerializedPropertyType.Generic;
 
-            //Disable it if needed
-            EditorGUI.BeginDisabledGroup(member.IsReadOnly || member.HasAttribute<ReadOnlyAttribute>());
-            EditorGUILayout.PropertyField(property, property.isArray);
-            EditorGUI.EndDisabledGroup();
-            serializedObject.ApplyModifiedProperties();
+            //Draw foldout area for the element 
+            using (var horizontal = new EditorGUILayout.HorizontalScope())
+            {
+                GUILayoutOption[] guiLayoutOptions = new GUILayoutOption[] { GUILayout.Width(20), GUILayout.Height(18) };
+                GUIContent removeButton = new(EditorGUIUtility.IconContent("d_winbtn_win_close@2x"))
+                {
+                    tooltip = "Removes the element from the list"
+                };
+
+                GUILayout.Button("∧", EditorStyles.miniButton, guiLayoutOptions);
+                GUILayout.Button("∨", EditorStyles.miniButton, guiLayoutOptions);
+
+                //If a foldout is to be drawn 
+                if (drawFoldout)
+                {
+                    element.isExpanded = EditorGUILayout.Foldout(element.isExpanded, element.displayName, true);
+
+                    if (GUILayout.Button(removeButton, guiLayoutOptions))
+                    {
+                        wantsToDelete?.Invoke();
+                        horizontal.Dispose();
+                        return;
+                    }
+
+                    horizontal.Dispose();
+                    if (!element.isExpanded)
+                        return;
+                }
+
+                //If any values were updated; Reinitialize the children
+                if (DrawSerializedMembers(elementMember, true, !drawFoldout))
+                    arrayMember.InitializeArray(target, serializedObject);
+
+                if (!drawFoldout)
+                {
+                    if (GUILayout.Button(removeButton, guiLayoutOptions))
+                    {
+                        wantsToDelete?.Invoke();
+                        horizontal.Dispose();
+                    }
+                }
+            }
         }
 
-        protected virtual bool CorrectShowIfValue(InspectorMember member, ShowIfAttribute showIf)
+        #endregion
+
+        /// <summary>
+        /// Whether the member has the correct value as per as the ShowIf attribute
+        /// </summary>
+        /// <param name="rootMember">The root member that contains the member</param>
+        /// <param name="member">The member itself</param>
+        /// <param name="showIf">The show if attribute</param>
+        /// <returns>returns true or false based on if the value is correct</returns>
+        protected virtual bool CorrectShowIfValue(Member rootMember, InspectorMember member, ShowIfAttribute showIf)
         {
             //Find finding the showIfMember
-            var showIfMember = RootMember.FindMember<InspectorMember>(showIf.PropertyName, true);
+            var showIfMember = rootMember.FindMember<InspectorMember>(showIf.PropertyName, true);
 
             //If the value is null display a help box accordingly 
             if (showIfMember == null)
@@ -278,7 +480,8 @@ namespace UV.EzyInspector.Editors
 
             //If the current value is null
             var value = showIfMember.GetValue();
-            if (value == null) return showIf.TargetValues == null || showIf.TargetValues.Length == 0;
+            if (showIf.TargetValues == null || showIf.TargetValues.Length == 0)
+                return value == null;
 
             for (int i = 0; i < showIf.TargetValues.Length; i++)
             {
@@ -306,7 +509,7 @@ namespace UV.EzyInspector.Editors
         protected virtual void DrawButton(object parent, MethodInfo method, ButtonAttribute button)
         {
             string buttonName = button.DisplayName ?? method.Name;
-            DrawButton(new(buttonName), () =>
+            this.DrawButton(new(buttonName), () =>
             {
                 method?.Invoke(parent, null);
                 EditorUtility.SetDirty(this);

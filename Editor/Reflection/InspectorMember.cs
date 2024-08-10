@@ -9,13 +9,19 @@ using Object = UnityEngine.Object;
 namespace UV.EzyInspector
 {
     using EzyReflection;
+    using static UnityEngine.GraphicsBuffer;
 
     /// <summary>
     /// Defines a member which appears in the Inspector
     /// </summary>
     public class InspectorMember : Member
     {
-        public InspectorMember(object instance) : base(instance) { }
+        public InspectorMember(object instance, string pathPrefix = null) : base(instance)
+        {
+            pathPrefix ??= Name;
+            Path = pathPrefix;
+        }
+
         public InspectorMember(MemberInfo memberInfo, object instance, object parentObject) : base(memberInfo, instance, parentObject) { }
 
         /// <summary>
@@ -42,6 +48,36 @@ namespace UV.EzyInspector
         /// The depth of the member 
         /// </summary>
         public int Depth { get; private set; }
+
+        /// <summary>
+        /// The cached drawable members 
+        /// </summary>
+        private InspectorMember[] _cachedDrawableMembers;
+
+        /// <summary>
+        /// The unity types which are to be not searched
+        /// </summary>
+        private Type[] _unityTypes =
+        {
+             typeof(Rect),
+             typeof(RectInt),
+
+             typeof(Color),
+             typeof(Gradient),
+
+             typeof(Vector2),
+             typeof(Vector2Int),
+
+             typeof(Vector3),
+             typeof(Vector3Int),
+
+             typeof(Vector4),
+             typeof(Quaternion),
+             typeof(AnimationCurve),
+
+             typeof(Bounds),
+             typeof(BoundsInt),
+        };
 
         /// <summary>
         /// Whether the member is serialized or not
@@ -85,8 +121,16 @@ namespace UV.EzyInspector
 
         public override bool IsSearchableChild(Member child)
         {
-            Type[] unityTypes = { typeof(Color), typeof(Vector2), typeof(Vector3) };
-            return base.IsSearchableChild(child) && !unityTypes.Contains(child.MemberType);
+            return base.IsSearchableChild(child) && IsUnityType(child.MemberType);
+        }
+
+        /// <summary>
+        /// Whether the given memberType is a unity type or not
+        /// </summary>
+        /// <param name="memberType">The member type which is to be checked</param>
+        public virtual bool IsUnityType(Type memberType)
+        {
+            return _unityTypes.Contains(MemberType);
         }
 
         /// <summary>
@@ -113,6 +157,35 @@ namespace UV.EzyInspector
             Path = Path.Replace($"{target}.", "");
             Depth = Path.Count(x => x.Equals('.'));
             MemberProperty = serializedObject.FindProperty(Path);
+            if (MemberProperty == null) return;
+            InitializeArray(target, serializedObject);
+        }
+
+        /// <summary>
+        /// Initializes the member array for the given targetObject
+        /// </summary>
+        /// <param name="target">The target inspector for the member</param>
+        /// <param name="serializedObject">The serializedObject for the member</param>
+        public void InitializeArray(Object target, SerializedObject serializedObject)
+        {
+            //If the member is an array; Find all its children 
+            if (!MemberProperty.isArray) return;
+            ChildMembers = Array.Empty<Member>();
+
+            //Loop through and create a InspectorMember for each element
+            for (int i = 0; i < MemberProperty.arraySize; i++)
+            {
+                var element = MemberProperty.GetArrayElementAtIndex(i);
+                var elementMember = new InspectorMember(element.boxedValue, element.propertyPath)
+                {
+                    MemberProperty = serializedObject.FindProperty($"{Path}.Array.data[{i}]")
+                };
+
+                AddChild(elementMember);
+            }
+
+            //Find all the drawable members under the array elements
+            _cachedDrawableMembers = GetDrawableMembers(target, serializedObject, true);
         }
 
         /// <summary>
@@ -124,7 +197,14 @@ namespace UV.EzyInspector
         /// <returns>Returns all the members which are to be drawn on the inspector</returns>
         public InspectorMember[] GetDrawableMembers(Object target, SerializedObject serializedObject, bool includeMethods = true)
         {
-            FindChildren();
+            //If it a non-searchable type
+            if (IsUnityType(MemberType))
+                return Array.Empty<InspectorMember>();
+
+            //If the members have already been found
+            if (_cachedDrawableMembers != null && _cachedDrawableMembers.Length > 0) return _cachedDrawableMembers;
+
+            if (ChildMembers == null || ChildMembers.Length == 0) FindChildren();
             var children = GetChildren<InspectorMember>();
             List<InspectorMember> drawableMembers = new();
 
@@ -146,14 +226,16 @@ namespace UV.EzyInspector
 
                 //Initialize the child member
                 member.InitializeMember(this, target, serializedObject);
-                if (member.MemberProperty == null && !member.HasAttribute<SerializeMemberAttribute>()) continue;
+                if (member.MemberProperty == null && !member.HasAttribute<SerializeMemberAttribute>())
+                    continue;
 
                 //If found find all under its children
                 drawableMembers.Add(member);
                 drawableMembers.AddRange(member.GetDrawableMembers(target, serializedObject, includeMethods));
             }
 
-            return drawableMembers.ToArray();
+            _cachedDrawableMembers = drawableMembers.ToArray();
+            return _cachedDrawableMembers;
         }
 
         /// <summary>
@@ -187,3 +269,4 @@ namespace UV.EzyInspector
         }
     }
 }
+
