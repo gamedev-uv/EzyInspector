@@ -6,7 +6,7 @@ namespace UV.EzyInspector.Editors
     /// <summary>
     /// GUI helper functions 
     /// </summary>
-    public static class GUIHelpers
+    public static class GUIDrawer
     {
         /// <summary>
         /// Draws a button on the inspector with the given gui content 

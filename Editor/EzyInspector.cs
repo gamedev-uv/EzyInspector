@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Linq;
 using UnityEditor;
 using UnityEngine;
 using System.Reflection;
@@ -7,7 +8,6 @@ using Object = UnityEngine.Object;
 namespace UV.EzyInspector.Editors
 {
     using EzyReflection;
-    using System.Linq;
 
     /// <summary>
     /// A overriden inspector 
@@ -167,7 +167,7 @@ namespace UV.EzyInspector.Editors
 
             //Disable it if needed
             EditorGUI.BeginDisabledGroup(member.IsReadOnly || member.HasAttribute<ReadOnlyAttribute>());
-            if (property.isArray && property.name.StartsWith("_"))
+            if (property.isArray)
                 DrawArray(property, member);
             else
                 EditorGUILayout.PropertyField(property, property.isArray);
@@ -295,11 +295,6 @@ namespace UV.EzyInspector.Editors
                 }
             }
 
-            //Apply any changes that were made
-            arrayProperty.serializedObject.ApplyModifiedProperties();
-            if (arrayProperty.arraySize != member.ChildMembers.Length)
-                member.InitializeArray(target, serializedObject);
-
             //If the array is expanded 
             if (!arrayProperty.isExpanded)
             {
@@ -307,46 +302,41 @@ namespace UV.EzyInspector.Editors
                 return;
             }
 
-            //Styles and contents for buttons 
-            var style = new GUIStyle(EditorStyles.iconButton);
-            GUIContent addButton = new(EditorGUIUtility.IconContent("Toolbar Plus"))
-            {
-                tooltip = "Adds a new element to list"
-            };
-            GUIContent removeButton = new(EditorGUIUtility.IconContent("Toolbar Minus"))
-            {
-                tooltip = "Removes the last element from the list"
-            };
-
             using (var backGroundBox = new EditorGUILayout.VerticalScope(EditorStyles.helpBox))
             {
                 //Draw all the elements
                 DrawArrayElements(arrayProperty, member);
-            }
 
-            //Draw the array transformation buttons
-            var buttonRect = EditorGUILayout.GetControlRect();
-            buttonRect.x = buttonRect.width - 20 * 2.5f;
-            buttonRect.width = 20 * 1.5f;
-            buttonRect.width /= 2;
-
-            //Add button
-            if (GUI.Button(buttonRect, addButton, style))
-            {
-                arrayProperty.arraySize++;
-                arrayProperty.serializedObject.ApplyModifiedProperties();
-            }
-
-            //Remove button
-            using (new EditorGUI.DisabledGroupScope(arrayProperty.arraySize == 0))
-            {
-                buttonRect.x += buttonRect.width * 1.4f;
-                if (GUI.Button(buttonRect, removeButton, style))
+                //Draw the Add and Remove buttons
+                using (new EditorGUILayout.HorizontalScope())
                 {
-                    arrayProperty.arraySize--;
-                    arrayProperty.serializedObject.ApplyModifiedProperties();
+                    //Add a space to align buttons to the right
+                    GUILayout.FlexibleSpace();
+
+                    //Add button
+                    if (GUILayout.Button(new GUIContent("Add", "Adds a new element to list")))
+                    {
+                        arrayProperty.arraySize++;
+                        arrayProperty.serializedObject.ApplyModifiedProperties();
+                    }
+
+                    //Remove button
+                    using (new EditorGUI.DisabledGroupScope(arrayProperty.arraySize == 0))
+                    {
+                        if (GUILayout.Button(new GUIContent("Remove", "Removes the last element from the list")))
+                        {
+                            arrayProperty.arraySize--;
+                            arrayProperty.serializedObject.ApplyModifiedProperties();
+                        }
+                    }
                 }
             }
+
+            //Apply any changes that were made
+            arrayProperty.serializedObject.ApplyModifiedProperties();
+            if (arrayProperty.arraySize != member.ChildMembers.Length)
+                member.InitializeArray(target, serializedObject);
+
             EditorGUILayout.EndFoldoutHeaderGroup();
             GUILayout.Space(10);
         }
@@ -365,72 +355,89 @@ namespace UV.EzyInspector.Editors
                 return;
             }
 
-            EditorGUI.indentLevel++;
-            var guiIndent = EditorGUI.indentLevel;
-
             var elementType = arrayMember.MemberType.GetElementType();
             var drawFoldout = !elementType.IsSimpleType() && !elementType.IsSubclassOf(typeof(Object));
 
             //Draw the array elements 
-            for (int i = 0; i < arrayProperty.arraySize; i++)
+            int length = arrayProperty.arraySize;
+            for (int i = 0; i < length; i++)
             {
-                EditorGUI.indentLevel = guiIndent;
                 var element = arrayProperty.GetArrayElementAtIndex(i);
                 var elementMember = arrayMember.ChildMembers[i] as InspectorMember;
 
                 //Draw the array element GUI
-                DrawArrayElement(element, elementMember,
+                DrawArrayElement(i, drawFoldout, element, elementMember,
                 arrayProperty, arrayMember,
-                drawFoldout,
                 () =>
                 {
                     //If the element is to be deleted
                     arrayProperty.DeleteArrayElementAtIndex(i);
                     arrayProperty.serializedObject.ApplyModifiedProperties();
                     return;
+                },
+                (targetIndex) =>
+                {
+                    arrayProperty.MoveArrayElement(i, targetIndex);
+                    arrayProperty.serializedObject.ApplyModifiedProperties();
+                    return;
                 });
             }
+
+            GUILayout.Space(5);
         }
 
         /// <summary>
         /// Draws the inspector for the given array element 
         /// </summary>
+        /// <param name="index">The index array element which is to be drawn</param>
         /// <param name="element">The array element for which the inspector is to be drawn</param>
         /// <param name="elementMember">The member for the element property</param>
         /// <param name="arrayProperty">The array property for which the elements are to be drawn</param>
         /// <param name="arrayMember">The member for the array property</param>
         /// <param name="wantsToDelete">The action which is to be called if the element is to be removed</param>
-        protected virtual void DrawArrayElement(SerializedProperty element, InspectorMember elementMember, SerializedProperty arrayProperty, InspectorMember arrayMember, bool drawFoldout, Action wantsToDelete)
+        /// <param name="wantsToMoveElement">The action which is to be called if the element is to be moved</param>
+        protected virtual void DrawArrayElement(int index, bool drawFoldout,
+                                                SerializedProperty element, InspectorMember elementMember,
+                                                SerializedProperty arrayProperty, InspectorMember arrayMember,
+                                                Action wantsToDelete, Action<int> wantsToMoveElement)
         {
+            //Indent if foldout is to be drawn
             drawFoldout = drawFoldout && element.propertyType == SerializedPropertyType.Generic;
+            var guiIndent = EditorGUI.indentLevel;
+            if (drawFoldout)
+                EditorGUI.indentLevel++;
+
+
 
             //Draw foldout area for the element 
             using (var horizontal = new EditorGUILayout.HorizontalScope())
             {
                 GUILayoutOption[] guiLayoutOptions = new GUILayoutOption[] { GUILayout.Width(20), GUILayout.Height(18) };
-                GUIContent removeButton = new(EditorGUIUtility.IconContent("d_winbtn_win_close@2x"))
+                GUIStyle buttonStyle = new(EditorStyles.iconButton)
                 {
-                    tooltip = "Removes the element from the list"
+                    fixedHeight = 20,
+                    fixedWidth = 20,
                 };
-
-                GUILayout.Button("∧", EditorStyles.miniButton, guiLayoutOptions);
-                GUILayout.Button("∨", EditorStyles.miniButton, guiLayoutOptions);
 
                 //If a foldout is to be drawn 
                 if (drawFoldout)
                 {
                     element.isExpanded = EditorGUILayout.Foldout(element.isExpanded, element.displayName, true);
 
-                    if (GUILayout.Button(removeButton, guiLayoutOptions))
-                    {
-                        wantsToDelete?.Invoke();
-                        horizontal.Dispose();
-                        return;
-                    }
+                    DrawElementReArrangeUI(index, arrayProperty.arraySize, buttonStyle, wantsToMoveElement, guiLayoutOptions);
+                    DrawElementRemoveButton(buttonStyle, wantsToDelete, guiLayoutOptions);
 
                     horizontal.Dispose();
                     if (!element.isExpanded)
+                    {
+                        EditorGUI.indentLevel = guiIndent;
                         return;
+                    }
+                }
+                else
+                {
+                    //Draw re arrange buttons on left if there is no foldout 
+                    DrawElementReArrangeUI(index, arrayProperty.arraySize, buttonStyle, wantsToMoveElement, guiLayoutOptions);
                 }
 
                 //If any values were updated; Reinitialize the children
@@ -438,16 +445,50 @@ namespace UV.EzyInspector.Editors
                     arrayMember.InitializeArray(target, serializedObject);
 
                 if (!drawFoldout)
-                {
-                    if (GUILayout.Button(removeButton, guiLayoutOptions))
-                    {
-                        wantsToDelete?.Invoke();
-                        horizontal.Dispose();
-                    }
-                }
+                    DrawElementRemoveButton(buttonStyle, wantsToDelete, guiLayoutOptions);
             }
+
+            EditorGUI.indentLevel = guiIndent;
         }
 
+        /// <summary>
+        /// Draws a button for removing an element from a list.
+        /// </summary>
+        /// <param name="buttonStyle">The style to be applied to the remove button.</param>
+        /// <param name="wantsToDelete">The action to be invoked when the remove button is clicked.</param>
+        /// <param name="guiLayoutOptions">Optional layout parameters for the remove button.</param>
+        protected virtual void DrawElementRemoveButton(GUIStyle buttonStyle, Action wantsToDelete, params GUILayoutOption[] guiLayoutOptions)
+        {
+            GUIContent removeButton = new(EditorGUIUtility.IconContent("d_winbtn_win_close@2x"))
+            {
+                tooltip = "Removes the element from the list"
+            };
+
+            if (GUILayout.Button(removeButton, buttonStyle, guiLayoutOptions))
+                wantsToDelete?.Invoke();
+        }
+
+        /// <summary>
+        /// Draws the GUI for rearranging an element within a list.
+        /// </summary>
+        /// <param name="index">The index of the element which is to be drawn</param>
+        /// <param name="arraySize">The total size of the collection to be drawn</param>
+        /// <param name="buttonStyle">The style to be applied to the rearrange buttons.</param>
+        /// <param name="wantsToMoveElement">The action which is to be called if the element is to be moved</param>
+        /// <param name="guiLayoutOptions">Optional layout parameters for the rearrange buttons.</param>
+        protected virtual void DrawElementReArrangeUI(int index, int arraySize, GUIStyle buttonStyle, Action<int> wantsToMoveElement, params GUILayoutOption[] guiLayoutOptions)
+        {
+            if (arraySize == 1) return;
+
+            var firstElement = index == 0;
+            var lastElement = index == arraySize - 1;
+
+            if (GUILayout.Button(Resources.Load<Texture>("caret-up"), buttonStyle))
+                wantsToMoveElement?.Invoke(firstElement ? arraySize - 1 : --index);
+
+            if (GUILayout.Button(Resources.Load<Texture>("caret-down"), buttonStyle))
+                wantsToMoveElement?.Invoke(lastElement ? 0 : ++index);
+        }
         #endregion
 
         /// <summary>
