@@ -156,27 +156,6 @@ namespace UV.EzyInspector.Editors
         }
 
         /// <summary>
-        /// Draws the given member
-        /// </summary>
-        /// <param name="member">The member which is to be drawn</param>
-        protected virtual bool DrawMember(InspectorMember member)
-        {
-            //Check whether the member has a SerializedProperty associated with it
-            var property = member.MemberProperty;
-            if (property == null) return false;
-
-            //Disable it if needed
-            EditorGUI.BeginDisabledGroup(member.IsReadOnly || member.HasAttribute<ReadOnlyAttribute>());
-            if (property.isArray)
-                DrawArray(property, member);
-            else
-                EditorGUILayout.PropertyField(property, property.isArray);
-
-            EditorGUI.EndDisabledGroup();
-            return property.serializedObject.ApplyModifiedProperties();
-        }
-
-        /// <summary>
         /// Draws all serialized members under the given rootMember
         /// </summary>
         /// <param name="rootMember">The root member which contains the drawableMembers</param>
@@ -197,7 +176,7 @@ namespace UV.EzyInspector.Editors
         /// <param name="rootMember">The root member which contains the drawableMembers</param>
         /// <param name="drawableMembers">The members which are to be drawn</param>
         /// <returns>Returns true or false based on if a property was updated or not</returns>
-        protected virtual bool DrawSerializedMembers(Member rootMember, InspectorMember[] drawableMembers)
+        protected virtual bool DrawSerializedMembers(InspectorMember rootMember, InspectorMember[] drawableMembers)
         {
             if (drawableMembers == null || drawableMembers.Length == 0) return false;
 
@@ -265,6 +244,27 @@ namespace UV.EzyInspector.Editors
             return serializedObject.ApplyModifiedProperties();
         }
 
+        /// <summary>
+        /// Draws the given member
+        /// </summary>
+        /// <param name="member">The member which is to be drawn</param>
+        protected virtual bool DrawMember(InspectorMember member)
+        {
+            //Check whether the member has a SerializedProperty associated with it
+            var property = member.MemberProperty;
+            if (property == null) return false;
+
+            //Disable it if needed
+            EditorGUI.BeginDisabledGroup(member.IsReadOnly || member.HasAttribute<ReadOnlyAttribute>());
+            if (property.isArray && !member.MemberType.IsSimpleType())
+                DrawArray(property, member);
+            else
+                EditorGUILayout.PropertyField(property, false);
+
+            EditorGUI.EndDisabledGroup();
+            return property.serializedObject.ApplyModifiedProperties();
+        }
+
         #region Array Drawing
         /// <summary>
         /// Draws the array property in the current inspector 
@@ -302,6 +302,8 @@ namespace UV.EzyInspector.Editors
                 return;
             }
 
+            EditorGUILayout.EndFoldoutHeaderGroup();
+
             using (var backGroundBox = new EditorGUILayout.VerticalScope(EditorStyles.helpBox))
             {
                 //Draw all the elements
@@ -337,7 +339,6 @@ namespace UV.EzyInspector.Editors
             if (arrayProperty.arraySize != member.ChildMembers.Length)
                 member.InitializeArray(target, serializedObject);
 
-            EditorGUILayout.EndFoldoutHeaderGroup();
             GUILayout.Space(10);
         }
 
