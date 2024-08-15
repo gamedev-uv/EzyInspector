@@ -80,12 +80,24 @@ namespace UV.EzyInspector
         };
 
         /// <summary>
+        /// Whether the member has serializer attributes or not
+        /// </summary>
+        /// <returns>Return true or false based on if it has serializer attributes or not</returns>
+        public bool HasSerializerAttributes()
+        {
+            return HasAttribute<SerializeField>() || HasAttribute<SerializeReference>() || HasAttribute<SerializeMemberAttribute>();
+        }
+
+        /// <summary>
         /// Whether the member is serialized or not
         /// </summary>
         /// <returns>Return true or false based on if it is serialized or not</returns>
         public bool IsSerialized()
         {
-            return HasAttribute<SerializeField>() || HasAttribute<SerializeReference>() || HasAttribute<SerializeMemberAttribute>() || IsPublic();
+            if (MemberInfo is PropertyInfo)
+                return HasSerializerAttributes();
+
+            return IsPublic() || HasSerializerAttributes();
         }
 
         /// <summary>
@@ -176,12 +188,19 @@ namespace UV.EzyInspector
             for (int i = 0; i < MemberProperty.arraySize; i++)
             {
                 var element = MemberProperty.GetArrayElementAtIndex(i);
-                var elementMember = new InspectorMember(element.boxedValue, element.propertyPath)
+                try
                 {
-                    MemberProperty = serializedObject.FindProperty($"{Path}.Array.data[{i}]")
-                };
+                    var elementMember = new InspectorMember(element.boxedValue, element.propertyPath)
+                    {
+                        MemberProperty = serializedObject.FindProperty($"{Path}.Array.data[{i}]")
+                    };
 
-                AddChild(elementMember);
+                    AddChild(elementMember);
+                }
+                catch
+                {
+                    Debug.LogWarning($"Couldn't fetch value for : ({Name} : [{MemberType}]). Make sure there are serialized members under it");
+                }
             }
 
             //Find all the drawable members under the array elements

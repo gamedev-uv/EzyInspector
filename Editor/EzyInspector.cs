@@ -356,9 +356,18 @@ namespace UV.EzyInspector.Editors
             int length = arrayProperty.arraySize;
             for (int i = 0; i < length; i++)
             {
+                if (i < 0 || i > arrayProperty.arraySize - 1) break;
+
                 var element = arrayProperty.GetArrayElementAtIndex(i);
                 if (element == null) return;
-                var elementMember = arrayMember.ChildMembers[i] as InspectorMember;
+                InspectorMember elementMember = null;
+                try
+                {
+                    elementMember = arrayMember.ChildMembers[i] as InspectorMember;
+                }
+                catch { }
+
+                if (elementMember == null) break;
 
                 //Draw the array element GUI
                 DrawArrayElement(i, drawFoldout, element, elementMember,
