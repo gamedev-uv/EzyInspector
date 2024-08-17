@@ -9,7 +9,6 @@ using Object = UnityEngine.Object;
 namespace UV.EzyInspector
 {
     using EzyReflection;
-    using static UnityEngine.GraphicsBuffer;
 
     /// <summary>
     /// Defines a member which appears in the Inspector
@@ -133,7 +132,7 @@ namespace UV.EzyInspector
 
         public override bool IsSearchableChild(Member child)
         {
-            return base.IsSearchableChild(child) && IsUnityType(child.MemberType);
+            return base.IsSearchableChild(child) && IsUnityType(child.MemberType) && !HasAttribute<HideInInspector>();
         }
 
         /// <summary>
@@ -181,7 +180,7 @@ namespace UV.EzyInspector
         public void InitializeArray(Object target, SerializedObject serializedObject)
         {
             //If the member is an array; Find all its children 
-            if (!MemberProperty.isArray) return;
+            if (!MemberProperty.isArray || HasAttribute<HideInInspector>()) return;
             ChildMembers = Array.Empty<Member>();
 
             //Loop through and create a InspectorMember for each element
