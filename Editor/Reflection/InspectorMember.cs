@@ -56,7 +56,7 @@ namespace UV.EzyInspector
         /// <summary>
         /// The unity types which are to be not searched
         /// </summary>
-        private Type[] _unityTypes =
+        private readonly Type[] _excludedUnityTypes =
         {
              typeof(Rect),
              typeof(RectInt),
@@ -76,6 +76,8 @@ namespace UV.EzyInspector
 
              typeof(Bounds),
              typeof(BoundsInt),
+
+             typeof(AssetImporter),
         };
 
         /// <summary>
@@ -141,7 +143,7 @@ namespace UV.EzyInspector
         /// <param name="memberType">The member type which is to be checked</param>
         public virtual bool IsUnityType(Type memberType)
         {
-            return _unityTypes.Contains(MemberType);
+            return _excludedUnityTypes.Contains(MemberType);
         }
 
         /// <summary>
