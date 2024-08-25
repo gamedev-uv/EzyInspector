@@ -256,7 +256,7 @@ namespace UV.EzyInspector.Editors
             //Disable it if needed
             EditorGUI.BeginDisabledGroup(member.IsReadOnly || member.HasAttribute<ReadOnlyAttribute>());
             if (property.isArray && !member.MemberType.IsSimpleType())
-                propertyUpdated = DrawArray(property, member);
+                propertyUpdated = DrawCollection(property, member);
             else
                 EditorGUILayout.PropertyField(property, false);
 
@@ -264,38 +264,47 @@ namespace UV.EzyInspector.Editors
             return propertyUpdated || property.serializedObject.ApplyModifiedProperties();
         }
 
-        #region Array Drawing
+        #region Collection Drawing
         /// <summary>
-        /// Draws the array property in the current inspector 
+        /// Draws the collection property in the current inspector 
         /// </summary>
-        /// <param name="arrayProperty">The array property</param>
-        /// <param name="member">The member of the array property</param>
-        protected virtual bool DrawArray(SerializedProperty arrayProperty, InspectorMember member)
+        /// <param name="property">The collection property</param>
+        /// <param name="member">The member of the collection property</param>
+        protected virtual bool DrawCollection(SerializedProperty property, InspectorMember member)
         {
-            //Draw array header foldout 
+            //Draw the default inspector if the type of collection isn't supported 
+            var elementType = member.MemberType.GetElementType();
+            elementType ??= member.MemberType.GetGenericArguments().First();
+            if (elementType == null)
+            {
+                EditorGUILayout.PropertyField(property, true);
+                return false;
+            }
+
+            //Draw collection header foldout 
             using (new EditorGUILayout.HorizontalScope())
             {
-                //Array foldout and size
-                arrayProperty.isExpanded = EditorGUILayout.BeginFoldoutHeaderGroup(arrayProperty.isExpanded, arrayProperty.displayName);
-                arrayProperty.arraySize = EditorGUILayout.IntField(arrayProperty.arraySize, GUILayout.Width(50));
+                //Collection foldout and size
+                property.isExpanded = EditorGUILayout.BeginFoldoutHeaderGroup(property.isExpanded, property.displayName);
+                property.arraySize = EditorGUILayout.IntField(property.arraySize, GUILayout.Width(50));
 
                 //Clear list button
-                using (new EditorGUI.DisabledGroupScope(arrayProperty.arraySize == 0))
+                using (new EditorGUI.DisabledGroupScope(property.arraySize == 0))
                 {
                     GUIContent clearList = new(EditorGUIUtility.IconContent("d_winbtn_win_close@2x"))
                     {
                         tooltip = "Clear list"
                     };
                     if (GUILayout.Button(clearList, GUILayout.Width(20), GUILayout.Height(EditorGUIUtility.singleLineHeight)))
-                        arrayProperty.ClearArray();
+                        property.ClearArray();
                 }
             }
 
-            //If the array is expanded 
-            if (!arrayProperty.isExpanded)
+            //If the property is expanded 
+            if (!property.isExpanded)
             {
                 EditorGUILayout.EndFoldoutHeaderGroup();
-                return arrayProperty.serializedObject.ApplyModifiedProperties();
+                return property.serializedObject.ApplyModifiedProperties();
             }
 
             EditorGUILayout.EndFoldoutHeaderGroup();
@@ -304,7 +313,8 @@ namespace UV.EzyInspector.Editors
             using (var backGroundBox = new EditorGUILayout.VerticalScope(EditorStyles.helpBox))
             {
                 //Draw all the elements
-                DrawArrayElements(arrayProperty, member, () => madeChanges = true);
+                var drawFoldout = !elementType.IsSimpleType() && !elementType.IsSubclassOf(typeof(Object));
+                DrawCollectionElements(property, member, drawFoldout, () => madeChanges = true);
 
                 //Draw the Add and Remove buttons
                 using (new EditorGUILayout.HorizontalScope())
@@ -314,20 +324,20 @@ namespace UV.EzyInspector.Editors
 
                     //Add button
                     if (GUILayout.Button(new GUIContent("Add", "Adds a new element to list")))
-                        arrayProperty.arraySize++;
+                        property.arraySize++;
 
                     //Remove button
-                    using (new EditorGUI.DisabledGroupScope(arrayProperty.arraySize == 0))
+                    using (new EditorGUI.DisabledGroupScope(property.arraySize == 0))
                     {
                         if (GUILayout.Button(new GUIContent("Remove", "Removes the last element from the list")))
-                            arrayProperty.arraySize--;
+                            property.arraySize--;
                     }
                 }
             }
 
             //Apply any changes that were made
-            madeChanges = madeChanges || arrayProperty.serializedObject.ApplyModifiedProperties();
-            if (arrayProperty.arraySize != member.ChildMembers.Length)
+            madeChanges = madeChanges || property.serializedObject.ApplyModifiedProperties();
+            if (property.arraySize != member.ChildMembers.Length)
                 member.InitializeArray(target, serializedObject);
 
             GUILayout.Space(10);
@@ -338,9 +348,10 @@ namespace UV.EzyInspector.Editors
         /// Draws all the array elements for the given array property 
         /// </summary>
         /// <param name="arrayProperty">The array property for which the elements are to be drawn</param>
+        /// <param name="drawFoldout">Whether a foldout is to be drawn for each element</param>
         /// <param name="arrayMember">The member for the property</param>
         /// <param name="propertyUpdated">The action to be called if the property was updated</param>
-        protected virtual void DrawArrayElements(SerializedProperty arrayProperty, InspectorMember arrayMember, Action propertyUpdated)
+        protected virtual void DrawCollectionElements(SerializedProperty arrayProperty, InspectorMember arrayMember, bool drawFoldout, Action propertyUpdated)
         {
             //If it has zero elements 
             if (arrayProperty.arraySize == 0)
@@ -348,9 +359,6 @@ namespace UV.EzyInspector.Editors
                 EditorGUILayout.LabelField("List is empty");
                 return;
             }
-
-            var elementType = arrayMember.MemberType.GetElementType();
-            var drawFoldout = !elementType.IsSimpleType() && !elementType.IsSubclassOf(typeof(Object));
 
             //Draw the array elements 
             int length = arrayProperty.arraySize;
@@ -369,8 +377,8 @@ namespace UV.EzyInspector.Editors
 
                 if (elementMember == null) break;
 
-                //Draw the array element GUI
-                DrawArrayElement(i, drawFoldout, element, elementMember,
+                //Draw the collection element GUI
+                DrawCollectionElement(i, drawFoldout, element, elementMember,
                 arrayProperty, () =>
                 {
                     //If any values were madeChanges; Reinitialize the children
@@ -405,13 +413,13 @@ namespace UV.EzyInspector.Editors
         /// <param name="index">The index array element which is to be drawn</param>
         /// <param name="element">The array element for which the inspector is to be drawn</param>
         /// <param name="elementMember">The member for the element property</param>
-        /// <param name="arrayProperty">The array property for which the elements are to be drawn</param>
-        /// <param name="omPropertyUpdated">The action which is to be called when the element is updated</param>
+        /// <param name="collectionProperty">The array property for which the elements are to be drawn</param>
+        /// <param name="onPropertyUpdated">The action which is to be called when the element is updated</param>
         /// <param name="wantsToDelete">The action which is to be called if the element is to be removed</param>
         /// <param name="wantsToMoveElement">The action which is to be called if the element is to be moved</param>
-        protected virtual void DrawArrayElement(int index, bool drawFoldout,
-                                                SerializedProperty element, InspectorMember elementMember, SerializedProperty arrayProperty,
-                                                Action omPropertyUpdated, Action wantsToDelete, Action<int> wantsToMoveElement)
+        protected virtual void DrawCollectionElement(int index, bool drawFoldout,
+                                                SerializedProperty element, InspectorMember elementMember, SerializedProperty collectionProperty,
+                                                Action onPropertyUpdated, Action wantsToDelete, Action<int> wantsToMoveElement)
         {
             //Indent if foldout is to be drawn
             drawFoldout = drawFoldout && element.propertyType == SerializedPropertyType.Generic;
@@ -436,7 +444,7 @@ namespace UV.EzyInspector.Editors
                     element.isExpanded = EditorGUILayout.Foldout(element.isExpanded, element.displayName, true);
                     var deleted = false;
 
-                    DrawElementReArrangeUI(index, arrayProperty.arraySize, buttonStyle, wantsToMoveElement, guiLayoutOptions);
+                    DrawElementReArrangeUI(index, collectionProperty.arraySize, buttonStyle, wantsToMoveElement, guiLayoutOptions);
                     DrawElementRemoveButton(buttonStyle, () =>
                     {
                         wantsToDelete?.Invoke();
@@ -456,12 +464,12 @@ namespace UV.EzyInspector.Editors
                 else
                 {
                     //Draw re arrange buttons on left if there is no foldout 
-                    DrawElementReArrangeUI(index, arrayProperty.arraySize, buttonStyle, wantsToMoveElement, guiLayoutOptions);
+                    DrawElementReArrangeUI(index, collectionProperty.arraySize, buttonStyle, wantsToMoveElement, guiLayoutOptions);
                 }
 
-                //Draw the members under the array element
+                //Draw the members under the collection element
                 if (DrawSerializedMembers(elementMember, true, !drawFoldout))
-                    omPropertyUpdated?.Invoke();
+                    onPropertyUpdated?.Invoke();
 
                 if (!drawFoldout)
                     DrawElementRemoveButton(buttonStyle, wantsToDelete, guiLayoutOptions);
