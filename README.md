@@ -5,7 +5,7 @@
 **Makes working and customizing the inspector easier!**
 
 # Table of Contents
-
+ℹ️ *Better override support will soon be added as well!*
   - [Installation](#installation)
   - [Dependencies](#dependencies)
   - [Attributes](#attributes)
@@ -19,6 +19,8 @@
       - [Button](#button)
 
       - [DisplayAsLabel](#displayaslabel)
+
+      - [TagSelector](#tagselector)
 
       - [ReadOnly](#readonly)
 
@@ -134,6 +136,20 @@ public class LabelExample : MonoBehaviour
     [SerializeField] private int _age = 18;
 
     [DisplayAsLabel("Qualified : {1}")] private bool _isQualified => _age >= 18;
+}
+```
+
+### TagSelector
+
+Exposes a tag selector dropdown in the inspector, allowing you to select from predefined tags in your project.
+
+```cs
+using UnityEngine;
+using UV.EzyInspector;
+
+public class ExampleTagSelector : MonoBehaviour
+{
+    [SerializeField, TagSelector] private string _exampleTag;
 }
 ```
 

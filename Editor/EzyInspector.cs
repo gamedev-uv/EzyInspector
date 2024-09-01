@@ -1,8 +1,8 @@
 ﻿using System;
 using System.Linq;
+using System.Reflection;
 using UnityEditor;
 using UnityEngine;
-using System.Reflection;
 using Object = UnityEngine.Object;
 
 namespace UV.EzyInspector.Editors
