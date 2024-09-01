@@ -134,7 +134,7 @@ namespace UV.EzyInspector
 
         public override bool IsSearchableChild(Member child)
         {
-            return base.IsSearchableChild(child) && IsUnityType(child.MemberType) && !HasAttribute<HideInInspector>();
+            return base.IsSearchableChild(child) && !IsUnityType(child.MemberType) && !HasAttribute<HideInInspector>();
         }
 
         /// <summary>
@@ -184,6 +184,7 @@ namespace UV.EzyInspector
             //If the member is an array; Find all its children 
             if (!MemberProperty.isArray || HasAttribute<HideInInspector>()) return;
             ChildMembers = Array.Empty<Member>();
+            var members = new List<Member>();
 
             //Loop through and create a InspectorMember for each element
             for (int i = 0; i < MemberProperty.arraySize; i++)
@@ -196,7 +197,7 @@ namespace UV.EzyInspector
                         MemberProperty = serializedObject.FindProperty($"{Path}.Array.data[{i}]")
                     };
 
-                    AddChild(elementMember);
+                    members.Add(elementMember);
                 }
                 catch
                 {
@@ -205,6 +206,7 @@ namespace UV.EzyInspector
             }
 
             //Find all the drawable members under the array elements
+            ChildMembers = members.ToArray();
             _cachedDrawableMembers = GetDrawableMembers(target, serializedObject, true);
         }
 
@@ -242,7 +244,8 @@ namespace UV.EzyInspector
                 }
 
                 //Skip if it is not serialized
-                if (!member.IsSerialized()) continue;
+                if (!member.IsSerialized())
+                    continue;
 
                 //Initialize the child member
                 member.InitializeMember(this, target, serializedObject);

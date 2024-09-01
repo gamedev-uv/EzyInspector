@@ -337,7 +337,7 @@ namespace UV.EzyInspector.Editors
 
             //Apply any changes that were made
             madeChanges = madeChanges || property.serializedObject.ApplyModifiedProperties();
-            if (property.arraySize != member.ChildMembers.Length)
+            if (madeChanges)
                 member.InitializeArray(target, serializedObject);
 
             GUILayout.Space(10);
