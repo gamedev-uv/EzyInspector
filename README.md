@@ -5,7 +5,8 @@
 **Makes working and customizing the inspector easier!**
 
 # Table of Contents
-ℹ️ *Better override support will soon be added as well!*
+> [!NOTE]  
+> Better override support will soon be added as well!
   - [Installation](#installation)
   - [Dependencies](#dependencies)
   - [Attributes](#attributes)
@@ -48,27 +49,34 @@
 
     </details>
 
-
-# 💿 Installation
-:warning: This package requires the [**EzyReflection**](https://github.com/gamedev-uv/EzyReflection) package in order to function. Make sure you install that package before installing this one.
-
-Through the [**Unity Package Manager**](https://docs.unity3d.com/Manual/upm-ui-giturl.html) using the following Git URLs:
-```
-https://github.com/gamedev-uv/EzyReflection.git
-```
-
-```
-https://github.com/gamedev-uv/EzyInspector.git
-```
+> [!IMPORTANT]
+> ### Installation
+> This package requires the [**EzyReflection**](https://github.com/gamedev-uv/EzyReflection) package in order to function. Make sure you install that package before installing this one.
+> Through the [**Unity Package Manager**](https://docs.unity3d.com/Manual/upm-ui-giturl.html) using the following Git URLs:
+>>```
+>>https://github.com/gamedev-uv/EzyReflection.git
+>>```
+>>```
+>>https://github.com/gamedev-uv/EzyInspector.git
+>>```
 
 # Dependencies 
  - [**EzyReflection**](https://github.com/gamedev-uv/EzyReflection)
 
 # Attributes
 
-## Formatting
 
-Attributes that affect how data is displayed or formatted in the inspector.
+## Formatting
+ Attributes that affect how data is displayed or formatted in the inspector
+
+> [!NOTE]  
+> This package updates the mono gui to look something like this : 
+![](.README/packagemonogui.png)
+>
+> Open Script : Opens the script in the specified External Script Editor\
+> Ping Script : Pings the script in the Project folder\
+> Select Script : Selects the given script
+
 
 ### HideMonoGUI
 
@@ -82,6 +90,8 @@ using UV.EzyInspector;
 public class ExampleHideMonoScript : MonoBehaviour {...}
 ```
 
+![](.README/hidemonogui.png)
+
 ### DefaultMonoGUI
 Draws the default MonoScript GUI in the inspector.
 
@@ -92,6 +102,8 @@ using UV.EzyInspector;
 [DefaultMonoGUI]
 public class ExampleDefaultMonoGUI : MonoBehaviour {...}
 ```
+
+![](.README/defaultmonogui.png)
 
 ### Button
 
@@ -115,6 +127,7 @@ public class ExampleButtonScript : MonoBehaviour
     }
 }
 ```
+![](.README/custombutton.gif)
 
 ### DisplayAsLabel
 
@@ -138,6 +151,7 @@ public class LabelExample : MonoBehaviour
     [DisplayAsLabel("Qualified : {1}")] private bool _isQualified => _age >= 18;
 }
 ```
+![](.README/displaylabel.gif)
 
 ### TagSelector
 
@@ -152,6 +166,7 @@ public class ExampleTagSelector : MonoBehaviour
     [SerializeField, TagSelector] private string _exampleTag;
 }
 ```
+![](.README/tagselector.gif)
 
 ### ReadOnly
 
@@ -163,9 +178,14 @@ using UV.EzyInspector;
 
 public class ReadOnlyExample : MonoBehaviour
 {
-    [SerializeField, ReadOnly] private int readOnlyInt = 10;
+    [SerializeField, ReadOnly] private int _readOnlyInt = 10;
+    [SerializeField, ReadOnly] private bool _readOnlyBool = false;
+    [SerializeField, ReadOnly] private GameObject _readOnlyGameObject;
+    [SerializeField, ReadOnly] private Transform[] _readOnlyTransforms;
 }
 ```
+![](.README/readonly.png)
+
 
 ## Serialization
 
@@ -185,6 +205,7 @@ public class ExampleGUIDScript : ScriptableObject
     [SerializeField, GUID] private string _objectGUID;
 }
 ```
+![](.README/guid.png)
 
 ### ForceInterface
 
@@ -208,6 +229,7 @@ public class ExampleForceInterface : MonoBehaviour
     private Object obj; 
 }
 ```
+![](.README/forceinterface.gif)
 
 ## Conditional
 
@@ -241,6 +263,7 @@ public class ExampleEditModeScript : MonoBehaviour
     private string readOnlyInPlayMode = "You can't edit this in play mode!";
 }
 ```
+![](.README/editmodeonly.gif)
 
 ### ShowIf
 
@@ -286,9 +309,11 @@ public class ShowIfExample : MonoBehaviour
    
 }
 ```
-**🛈 Here integers and booleans have been used but you can compare multiple values of any type.**
+![](.README/showif.gif)
 
-**⚠️ You can directly pass in the name of the property as shown in the last 2 examples but usage of ``nameof`` would be suggested**
+> [!Tip]\
+> Here integers and booleans have been used but you can compare multiple values of any type.\
+> You can directly pass in the name of the property as shown in the last 2 examples but usage of ``nameof`` would be suggested
 
 ## Callbacks
 
@@ -334,3 +359,4 @@ public class ExampleScript : MonoBehaviour
     }
 }
 ```
+![](.README/oninspectorupdated.gif)

@@ -254,9 +254,10 @@ namespace UV.EzyInspector.Editors
             bool propertyUpdated = false;
 
             //Disable it if needed
-            EditorGUI.BeginDisabledGroup(member.IsReadOnly || member.HasAttribute<ReadOnlyAttribute>());
+            var disabled = member.IsReadOnly || member.HasAttribute<ReadOnlyAttribute>();
+            EditorGUI.BeginDisabledGroup(disabled);
             if (property.isArray && !member.MemberType.IsSimpleType())
-                propertyUpdated = DrawCollection(property, member);
+                propertyUpdated = DrawCollection(property, member, disabled);
             else
                 EditorGUILayout.PropertyField(property, false);
 
@@ -270,7 +271,8 @@ namespace UV.EzyInspector.Editors
         /// </summary>
         /// <param name="property">The collection property</param>
         /// <param name="member">The member of the collection property</param>
-        protected virtual bool DrawCollection(SerializedProperty property, InspectorMember member)
+        /// <param name="disabled">Whether the collection gui controls are to be disabled</param>
+        protected virtual bool DrawCollection(SerializedProperty property, InspectorMember member, bool disabled = false)
         {
             //Draw the default inspector if the type of collection isn't supported 
             var elementType = member.MemberType.GetElementType();
@@ -285,7 +287,9 @@ namespace UV.EzyInspector.Editors
             using (new EditorGUILayout.HorizontalScope())
             {
                 //Collection foldout and size
+                GUI.enabled = true;
                 property.isExpanded = EditorGUILayout.BeginFoldoutHeaderGroup(property.isExpanded, property.displayName);
+                GUI.enabled = !disabled;
                 property.arraySize = EditorGUILayout.IntField(property.arraySize, GUILayout.Width(50));
 
                 //Clear list button

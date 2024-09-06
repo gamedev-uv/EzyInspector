@@ -3,6 +3,8 @@ using UV.EzyInspector;
 
 public class CallBacks : MonoBehaviour
 {
+    [SerializeField] private int _exampleInt;
+
     [OnInspectorUpdated]
     private void OnInspectorUpdate()
     {
