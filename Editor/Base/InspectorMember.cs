@@ -9,6 +9,7 @@ using Object = UnityEngine.Object;
 namespace UV.EzyInspector
 {
     using EzyReflection;
+    using UnityEngine.Events;
 
     /// <summary>
     /// Defines a member which appears in the Inspector
@@ -134,7 +135,13 @@ namespace UV.EzyInspector
 
         public override bool IsSearchableChild(Member child)
         {
-            return base.IsSearchableChild(child) && !IsUnityType(child.MemberType) && !HasAttribute<HideInInspector>();
+            return base.IsSearchableChild(child) && !HasAttribute<HideInInspector>();
+        }
+
+        public override bool IsSearchableType(Type type, bool unityTypes = false)
+        {
+            if (type != null && !base.IsSearchableType(type, unityTypes)) return false;
+            return !IsUnityType(type);
         }
 
         /// <summary>
@@ -143,6 +150,7 @@ namespace UV.EzyInspector
         /// <param name="memberType">The member type which is to be checked</param>
         public virtual bool IsUnityType(Type memberType)
         {
+            if (memberType != null && memberType.IsSubclassOf(typeof(UnityEventBase))) return true;
             return _excludedUnityTypes.Contains(MemberType);
         }
 
@@ -219,9 +227,7 @@ namespace UV.EzyInspector
         /// <returns>Returns all the members which are to be drawn on the inspector</returns>
         public InspectorMember[] GetDrawableMembers(Object target, SerializedObject serializedObject, bool includeMethods = true)
         {
-            //If it a non-searchable type
-            if (IsUnityType(MemberType))
-                return Array.Empty<InspectorMember>();
+            if (!IsSearchableType(MemberType) && ParentMember != null) return Array.Empty<InspectorMember>();
 
             //If the members have already been found
             if (_cachedDrawableMembers != null && _cachedDrawableMembers.Length > 0) return _cachedDrawableMembers;

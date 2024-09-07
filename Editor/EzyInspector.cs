@@ -8,6 +8,8 @@ using Object = UnityEngine.Object;
 namespace UV.EzyInspector.Editors
 {
     using EzyReflection;
+    using UnityEngine.Events;
+    using UnityEngine.UI;
 
     /// <summary>
     /// A overriden inspector 
@@ -248,18 +250,19 @@ namespace UV.EzyInspector.Editors
         /// <param name="member">The member which is to be drawn</param>
         protected virtual bool DrawMember(InspectorMember member)
         {
-            //Check whether the member has a SerializedProperty associated with it
             var property = member.MemberProperty;
             if (property == null) return false;
-            bool propertyUpdated = false;
+            bool propertyUpdated;
 
             //Disable it if needed
             var disabled = member.IsReadOnly || member.HasAttribute<ReadOnlyAttribute>();
             EditorGUI.BeginDisabledGroup(disabled);
+
+            //Draw the property 
             if (property.isArray && !member.MemberType.IsSimpleType())
                 propertyUpdated = DrawCollection(property, member, disabled);
             else
-                EditorGUILayout.PropertyField(property, false);
+                propertyUpdated = EditorGUILayout.PropertyField(property, false);
 
             EditorGUI.EndDisabledGroup();
             return propertyUpdated || property.serializedObject.ApplyModifiedProperties();
