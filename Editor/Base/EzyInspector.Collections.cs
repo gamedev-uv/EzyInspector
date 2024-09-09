@@ -1,0 +1,268 @@
+using System;
+using System.Linq;
+using UnityEditor;
+using UnityEngine;
+using Object = UnityEngine.Object;
+
+namespace UV.EzyInspector.Editors
+{
+    using EzyReflection;
+
+    public partial class EzyInspector 
+    {
+        /// <summary>
+        /// Draws the collection property in the current inspector 
+        /// </summary>
+        /// <param name="property">The collection property</param>
+        /// <param name="member">The member of the collection property</param>
+        /// <param name="disabled">Whether the collection gui controls are to be disabled</param>
+        protected virtual bool DrawCollection(SerializedProperty property, InspectorMember member, bool disabled = false)
+        {
+            //Draw the default inspector if the type of collection isn't supported 
+            var elementType = member.MemberType.GetElementType();
+            elementType ??= member.MemberType.GetGenericArguments().First();
+            if (elementType == null)
+            {
+                EditorGUILayout.PropertyField(property, true);
+                return false;
+            }
+
+            //Draw collection header foldout 
+            using (new EditorGUILayout.HorizontalScope())
+            {
+                //Collection foldout and size
+                GUI.enabled = true;
+                property.isExpanded = EditorGUILayout.BeginFoldoutHeaderGroup(property.isExpanded, property.displayName);
+                GUI.enabled = !disabled;
+                property.arraySize = EditorGUILayout.IntField(property.arraySize, GUILayout.Width(50));
+
+                //Clear list button
+                using (new EditorGUI.DisabledGroupScope(property.arraySize == 0))
+                {
+                    GUIContent clearList = new(EditorGUIUtility.IconContent("d_winbtn_win_close@2x"))
+                    {
+                        tooltip = "Clear list"
+                    };
+                    if (GUILayout.Button(clearList, GUILayout.Width(20), GUILayout.Height(EditorGUIUtility.singleLineHeight)))
+                        property.ClearArray();
+                }
+            }
+
+            //If the property is expanded 
+            if (!property.isExpanded)
+            {
+                EditorGUILayout.EndFoldoutHeaderGroup();
+                return property.serializedObject.ApplyModifiedProperties();
+            }
+
+            EditorGUILayout.EndFoldoutHeaderGroup();
+
+            bool madeChanges = false;
+            using (var backGroundBox = new EditorGUILayout.VerticalScope(EditorStyles.helpBox))
+            {
+                //Draw all the elements
+                var drawFoldout = !elementType.IsSimpleType() && !elementType.IsSubclassOf(typeof(Object));
+                DrawCollectionElements(property, member, drawFoldout, () => madeChanges = true);
+
+                //Draw the Add and Remove buttons
+                using (new EditorGUILayout.HorizontalScope())
+                {
+                    //Add a space to align buttons to the right
+                    GUILayout.FlexibleSpace();
+
+                    //Add button
+                    if (GUILayout.Button(new GUIContent("Add", "Adds a new element to list")))
+                        property.arraySize++;
+
+                    //Remove button
+                    using (new EditorGUI.DisabledGroupScope(property.arraySize == 0))
+                    {
+                        if (GUILayout.Button(new GUIContent("Remove", "Removes the last element from the list")))
+                            property.arraySize--;
+                    }
+                }
+            }
+
+            //Apply any changes that were made
+            madeChanges = madeChanges || property.serializedObject.ApplyModifiedProperties();
+            if (madeChanges)
+                member.InitializeArray(RootMember, serializedObject);
+
+            GUILayout.Space(10);
+            return madeChanges;
+        }
+
+        /// <summary>
+        /// Draws all the array elements for the given array property 
+        /// </summary>
+        /// <param name="arrayProperty">The array property for which the elements are to be drawn</param>
+        /// <param name="drawFoldout">Whether a foldout is to be drawn for each element</param>
+        /// <param name="arrayMember">The member for the property</param>
+        /// <param name="propertyUpdated">The action to be called if the property was updated</param>
+        protected virtual void DrawCollectionElements(SerializedProperty arrayProperty, InspectorMember arrayMember, bool drawFoldout, Action propertyUpdated)
+        {
+            //If it has zero elements 
+            if (arrayProperty.arraySize == 0)
+            {
+                EditorGUILayout.LabelField("List is empty");
+                return;
+            }
+
+            //Draw the array elements 
+            int length = arrayProperty.arraySize;
+            for (int i = 0; i < length; i++)
+            {
+                if (i < 0 || i > arrayProperty.arraySize - 1) break;
+
+                var element = arrayProperty.GetArrayElementAtIndex(i);
+                if (element == null) return;
+                InspectorMember elementMember = null;
+                try
+                {
+                    elementMember = arrayMember.ChildMembers[i] as InspectorMember;
+                }
+                catch { }
+
+                if (elementMember == null) break;
+
+                //Draw the collection element GUI
+                DrawCollectionElement(i, drawFoldout, element, elementMember,
+                arrayProperty, () =>
+                {
+                    //If any values were madeChanges; Reinitialize the children
+                    arrayMember.InitializeArray(RootMember, serializedObject);
+                    propertyUpdated?.Invoke();
+                    return;
+                },
+                () =>
+                {
+                    //If the element is to be deleted
+                    arrayProperty.DeleteArrayElementAtIndex(i);
+                    arrayProperty.serializedObject.ApplyModifiedProperties();
+                    propertyUpdated?.Invoke();
+                    return;
+                },
+                (targetIndex) =>
+                {
+                    //If the element is to be moved
+                    arrayProperty.MoveArrayElement(i, targetIndex);
+                    arrayProperty.serializedObject.ApplyModifiedProperties();
+                    propertyUpdated?.Invoke();
+                    return;
+                });
+            }
+
+            GUILayout.Space(5);
+        }
+
+        /// <summary>
+        /// Draws the inspector for the given array element 
+        /// </summary>
+        /// <param name="index">The index array element which is to be drawn</param>
+        /// <param name="element">The array element for which the inspector is to be drawn</param>
+        /// <param name="elementMember">The member for the element property</param>
+        /// <param name="collectionProperty">The array property for which the elements are to be drawn</param>
+        /// <param name="onPropertyUpdated">The action which is to be called when the element is updated</param>
+        /// <param name="wantsToDelete">The action which is to be called if the element is to be removed</param>
+        /// <param name="wantsToMoveElement">The action which is to be called if the element is to be moved</param>
+        protected virtual void DrawCollectionElement(int index, bool drawFoldout,
+                                                SerializedProperty element, InspectorMember elementMember, SerializedProperty collectionProperty,
+                                                Action onPropertyUpdated, Action wantsToDelete, Action<int> wantsToMoveElement)
+        {
+            //Indent if foldout is to be drawn
+            drawFoldout = drawFoldout && element.propertyType == SerializedPropertyType.Generic;
+            var guiIndent = EditorGUI.indentLevel;
+            if (drawFoldout)
+                EditorGUI.indentLevel++;
+
+
+            //Draw foldout area for the element 
+            using (var horizontal = new EditorGUILayout.HorizontalScope())
+            {
+                GUILayoutOption[] guiLayoutOptions = new GUILayoutOption[] { GUILayout.Width(20), GUILayout.Height(18) };
+                GUIStyle buttonStyle = new(EditorStyles.iconButton)
+                {
+                    fixedHeight = 20,
+                    fixedWidth = 20,
+                };
+
+                //If a foldout is to be drawn 
+                if (drawFoldout)
+                {
+                    element.isExpanded = EditorGUILayout.Foldout(element.isExpanded, element.displayName, true);
+                    var deleted = false;
+
+                    DrawElementReArrangeUI(index, collectionProperty.arraySize, buttonStyle, wantsToMoveElement, guiLayoutOptions);
+                    DrawElementRemoveButton(buttonStyle, () =>
+                    {
+                        wantsToDelete?.Invoke();
+                        deleted = true;
+                        return;
+
+                    }, guiLayoutOptions);
+
+                    horizontal.Dispose();
+
+                    if (deleted || !element.isExpanded)
+                    {
+                        EditorGUI.indentLevel = guiIndent;
+                        return;
+                    }
+                }
+                else
+                {
+                    //Draw re arrange buttons on left if there is no foldout 
+                    DrawElementReArrangeUI(index, collectionProperty.arraySize, buttonStyle, wantsToMoveElement, guiLayoutOptions);
+                }
+
+                //Draw the members under the collection element
+                if (DrawSerializedMembers(elementMember, true, !drawFoldout))
+                    onPropertyUpdated?.Invoke();
+
+                if (!drawFoldout)
+                    DrawElementRemoveButton(buttonStyle, wantsToDelete, guiLayoutOptions);
+            }
+
+            EditorGUI.indentLevel = guiIndent;
+        }
+
+        /// <summary>
+        /// Draws a button for removing an element from a list.
+        /// </summary>
+        /// <param name="buttonStyle">The style to be applied to the remove button.</param>
+        /// <param name="wantsToDelete">The action to be invoked when the remove button is clicked.</param>
+        /// <param name="guiLayoutOptions">Optional layout parameters for the remove button.</param>
+        protected virtual void DrawElementRemoveButton(GUIStyle buttonStyle, Action wantsToDelete, params GUILayoutOption[] guiLayoutOptions)
+        {
+            GUIContent removeButton = new(EditorGUIUtility.IconContent("d_winbtn_win_close@2x"))
+            {
+                tooltip = "Removes the element from the list"
+            };
+
+            if (GUILayout.Button(removeButton, buttonStyle, guiLayoutOptions))
+                wantsToDelete?.Invoke();
+        }
+
+        /// <summary>
+        /// Draws the GUI for rearranging an element within a list.
+        /// </summary>
+        /// <param name="index">The index of the element which is to be drawn</param>
+        /// <param name="arraySize">The total size of the collection to be drawn</param>
+        /// <param name="buttonStyle">The style to be applied to the rearrange buttons.</param>
+        /// <param name="wantsToMoveElement">The action which is to be called if the element is to be moved</param>
+        /// <param name="guiLayoutOptions">Optional layout parameters for the rearrange buttons.</param>
+        protected virtual void DrawElementReArrangeUI(int index, int arraySize, GUIStyle buttonStyle, Action<int> wantsToMoveElement, params GUILayoutOption[] guiLayoutOptions)
+        {
+            if (arraySize == 1) return;
+
+            var firstElement = index == 0;
+            var lastElement = index == arraySize - 1;
+
+            if (GUILayout.Button(Resources.Load<Texture>("caret-up"), buttonStyle))
+                wantsToMoveElement?.Invoke(firstElement ? arraySize - 1 : --index);
+
+            if (GUILayout.Button(Resources.Load<Texture>("caret-down"), buttonStyle))
+                wantsToMoveElement?.Invoke(lastElement ? 0 : ++index);
+        }
+    }
+}

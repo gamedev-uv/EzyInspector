@@ -45,6 +45,21 @@ namespace UV.EzyInspector
         public SerializedProperty MemberProperty { get; private set; }
 
         /// <summary>
+        /// Whether the member is dependent on a show if member 
+        /// </summary>
+        public bool IsShowIfDependent { get; private set; }
+
+        /// <summary>
+        /// The show if attribute on the member
+        /// </summary>
+        public ShowIfAttribute ShowIfInstance { get; private set; }
+
+        /// <summary>
+        /// The member whose value is to be compared 
+        /// </summary>
+        public InspectorMember ShowIfMember { get; private set; }
+
+        /// <summary>
         /// The depth of the member 
         /// </summary>
         public int Depth { get; private set; }
@@ -140,8 +155,7 @@ namespace UV.EzyInspector
 
         public override bool IsSearchableType(Type type, bool unityTypes = false)
         {
-            if (type != null && !base.IsSearchableType(type, unityTypes)) return false;
-            return !IsUnityType(type);
+            return base.IsSearchableType(type, unityTypes) && !IsUnityType(type);
         }
 
         /// <summary>
@@ -170,27 +184,46 @@ namespace UV.EzyInspector
         /// Initializes the member for the given targetObject
         /// </summary>
         /// <param name="parentMember">The parent member for this member</param>
-        /// <param name="target">The target inspector for the member</param>
+        /// <param name="rootMember">The root member for the member</param>
         /// <param name="serializedObject">The serializedObject for the member</param>
-        public void InitializeMember(InspectorMember parentMember, Object target, SerializedObject serializedObject)
+        public void InitializeMember(InspectorMember parentMember, InspectorMember rootMember, SerializedObject serializedObject)
         {
+            var target = rootMember.Instance as Object;
             ParentMember = parentMember;
+
+            //Find the serialized property for the member
             Path = Path.Replace($"{target}.", "");
             Depth = Path.Count(x => x.Equals('.'));
             MemberProperty = serializedObject.FindProperty(Path);
             if (MemberProperty == null) return;
-            InitializeArray(target, serializedObject);
+
+            //Initialize show if attribute
+            InitializeShowIfMember(rootMember);
+
+            //If the member is an collection;
+            if (!MemberProperty.isArray || HasAttribute<HideInInspector>()) return;
+            InitializeArray(rootMember, serializedObject);
+        }
+
+        /// <summary>
+        /// Initialized the info about the show if attribute if present on the member
+        /// </summary>
+        /// <param name="rootMember">The root of the member</param>
+        public void InitializeShowIfMember(InspectorMember rootMember)
+        {
+            if (!TryGetAttribute(out ShowIfAttribute showIf)) return;
+            ShowIfInstance = showIf;
+            ShowIfMember = rootMember.FindMember<InspectorMember>(showIf.PropertyName, true);
+            IsShowIfDependent = ShowIfMember != null;
         }
 
         /// <summary>
         /// Initializes the member array for the given targetObject
         /// </summary>
-        /// <param name="target">The target inspector for the member</param>
+        /// <param name="rootMember">The root member for the member</param>
         /// <param name="serializedObject">The serializedObject for the member</param>
-        public void InitializeArray(Object target, SerializedObject serializedObject)
+        public void InitializeArray(InspectorMember rootMember, SerializedObject serializedObject)
         {
-            //If the member is an array; Find all its children 
-            if (!MemberProperty.isArray || HasAttribute<HideInInspector>()) return;
             ChildMembers = Array.Empty<Member>();
             var members = new List<Member>();
 
@@ -215,19 +248,21 @@ namespace UV.EzyInspector
 
             //Find all the drawable members under the array elements
             ChildMembers = members.ToArray();
-            _cachedDrawableMembers = GetDrawableMembers(target, serializedObject, true);
+            _cachedDrawableMembers = GetDrawableMembers(rootMember, serializedObject, true);
         }
 
         /// <summary>
         /// The members which are to be drawn under on the inspector under this member
         /// </summary>
-        /// <param name="target">The target for this member</param>
+        /// <param name="rootObject">The rootMember for this member</param>
         /// <param name="serializedObject">The current serializedObject</param>
         /// <param name="includeMethods">Whether methods are to be included or not</param>
         /// <returns>Returns all the members which are to be drawn on the inspector</returns>
-        public InspectorMember[] GetDrawableMembers(Object target, SerializedObject serializedObject, bool includeMethods = true)
+        public InspectorMember[] GetDrawableMembers(InspectorMember rootObject, SerializedObject serializedObject, bool includeMethods = true)
         {
-            if (!IsSearchableType(MemberType) && ParentMember != null) return Array.Empty<InspectorMember>();
+            if (!IsSearchableType(MemberType))
+                if (Instance != null && !Instance.Equals(rootObject.Instance))
+                    return Array.Empty<InspectorMember>();
 
             //If the members have already been found
             if (_cachedDrawableMembers != null && _cachedDrawableMembers.Length > 0) return _cachedDrawableMembers;
@@ -254,13 +289,13 @@ namespace UV.EzyInspector
                     continue;
 
                 //Initialize the child member
-                member.InitializeMember(this, target, serializedObject);
+                member.InitializeMember(this, rootObject, serializedObject);
                 if (member.MemberProperty == null && !member.HasAttribute<SerializeMemberAttribute>())
                     continue;
 
                 //If found find all under its children
                 drawableMembers.Add(member);
-                drawableMembers.AddRange(member.GetDrawableMembers(target, serializedObject, includeMethods));
+                drawableMembers.AddRange(member.GetDrawableMembers(rootObject, serializedObject, includeMethods));
             }
 
             _cachedDrawableMembers = drawableMembers.ToArray();
