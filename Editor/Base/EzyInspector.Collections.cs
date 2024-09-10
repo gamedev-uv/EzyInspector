@@ -8,7 +8,7 @@ namespace UV.EzyInspector.Editors
 {
     using EzyReflection;
 
-    public partial class EzyInspector 
+    public partial class EzyInspector
     {
         /// <summary>
         /// Draws the collection property in the current inspector 
@@ -27,35 +27,8 @@ namespace UV.EzyInspector.Editors
                 return false;
             }
 
-            //Draw collection header foldout 
-            using (new EditorGUILayout.HorizontalScope())
-            {
-                //Collection foldout and size
-                GUI.enabled = true;
-                property.isExpanded = EditorGUILayout.BeginFoldoutHeaderGroup(property.isExpanded, property.displayName);
-                GUI.enabled = !disabled;
-                property.arraySize = EditorGUILayout.IntField(property.arraySize, GUILayout.Width(50));
-
-                //Clear list button
-                using (new EditorGUI.DisabledGroupScope(property.arraySize == 0))
-                {
-                    GUIContent clearList = new(EditorGUIUtility.IconContent("d_winbtn_win_close@2x"))
-                    {
-                        tooltip = "Clear list"
-                    };
-                    if (GUILayout.Button(clearList, GUILayout.Width(20), GUILayout.Height(EditorGUIUtility.singleLineHeight)))
-                        property.ClearArray();
-                }
-            }
-
-            //If the property is expanded 
-            if (!property.isExpanded)
-            {
-                EditorGUILayout.EndFoldoutHeaderGroup();
-                return property.serializedObject.ApplyModifiedProperties();
-            }
-
-            EditorGUILayout.EndFoldoutHeaderGroup();
+            //Draw the foldout header
+            DrawFoldoutHeader(property, member, elementType, disabled);
 
             bool madeChanges = false;
             using (var backGroundBox = new EditorGUILayout.VerticalScope(EditorStyles.helpBox))
@@ -90,6 +63,75 @@ namespace UV.EzyInspector.Editors
 
             GUILayout.Space(10);
             return madeChanges;
+        }
+
+        /// <summary>
+        /// Draws the foldout header for the collection, with options to clear the list, handle drag-and-drop, and resize the array
+        /// </summary>
+        /// <param name="property">The collection property to draw the header for</param>
+        /// <param name="member">The member representing the collection property</param>
+        /// <param name="elementType">The type of elements in the collection</param>
+        /// <param name="disabled">Whether the controls for the collection are disabled</param>
+        public virtual void DrawFoldoutHeader(SerializedProperty property, InspectorMember member, Type elementType, bool disabled)
+        {
+            //Draw collection header foldout 
+            using (var horizontal = new EditorGUILayout.HorizontalScope())
+            {
+                //Collection foldout
+                GUI.enabled = true;
+                property.isExpanded = EditorGUILayout.BeginFoldoutHeaderGroup(property.isExpanded, property.displayName);
+                var foldoutRect = horizontal.rect;
+                foldoutRect.width -= 70;
+
+                //Handle the drap and drop functionality if the member isn't disabled
+                if (!disabled)
+                    HandleDragAndDrop(foldoutRect, property, member, elementType);
+
+                //Collection Size
+                GUI.enabled = !disabled;
+                property.arraySize = EditorGUILayout.IntField(property.arraySize, GUILayout.Width(50));
+
+                //Clear list button
+                using (new EditorGUI.DisabledGroupScope(property.arraySize == 0))
+                {
+                    GUIContent clearList = new(EditorGUIUtility.IconContent("d_winbtn_win_close@2x"))
+                    {
+                        tooltip = "Clear list"
+                    };
+                    if (GUILayout.Button(clearList, GUILayout.Width(20), GUILayout.Height(EditorGUIUtility.singleLineHeight)))
+                        property.ClearArray();
+                }
+            }
+
+            //If the property is expanded 
+            EditorGUILayout.EndFoldoutHeaderGroup();
+        }
+
+        /// <summary>
+        /// Draws the individual elements of a collection, providing options to update, delete, or move elements
+        /// </summary>
+        /// <param name="arrayProperty">The SerializedProperty representing the collection</param>
+        /// <param name="drawFoldout">Whether to draw foldouts for each element</param>
+        /// <param name="arrayMember">The member representing the collection property</param>
+        /// <param name="propertyUpdated">Action to invoke if the property was updated</param>
+        public virtual void HandleDragAndDrop(Rect foldoutRect, SerializedProperty property, InspectorMember member, Type elementType)
+        {
+            if (!elementType.IsSubclassOf(typeof(Object))) return;
+            var objects = foldoutRect.CheckDragAndDrop(elementType);
+            if (objects.Length == 0) return;
+
+            //Add elements to the collection
+            var index = property.arraySize - 1;
+            for (int i = 0; i < objects.Length; i++)
+            {
+                property.InsertArrayElementAtIndex(index + i + 1);
+                var element = property.GetArrayElementAtIndex(index + i + 1);
+                element.objectReferenceValue = objects[i];
+            }
+
+            //Update the property, and reinitialize members
+            property.serializedObject.ApplyModifiedProperties();
+            member.InitializeArray(RootMember, serializedObject);
         }
 
         /// <summary>
@@ -227,11 +269,11 @@ namespace UV.EzyInspector.Editors
         }
 
         /// <summary>
-        /// Draws a button for removing an element from a list.
+        /// Draws a button for removing an element from a list
         /// </summary>
-        /// <param name="buttonStyle">The style to be applied to the remove button.</param>
-        /// <param name="wantsToDelete">The action to be invoked when the remove button is clicked.</param>
-        /// <param name="guiLayoutOptions">Optional layout parameters for the remove button.</param>
+        /// <param name="buttonStyle">The style to be applied to the remove button</param>
+        /// <param name="wantsToDelete">The action to be invoked when the remove button is clicked</param>
+        /// <param name="guiLayoutOptions">Optional layout parameters for the remove button</param>
         protected virtual void DrawElementRemoveButton(GUIStyle buttonStyle, Action wantsToDelete, params GUILayoutOption[] guiLayoutOptions)
         {
             GUIContent removeButton = new(EditorGUIUtility.IconContent("d_winbtn_win_close@2x"))
@@ -248,9 +290,9 @@ namespace UV.EzyInspector.Editors
         /// </summary>
         /// <param name="index">The index of the element which is to be drawn</param>
         /// <param name="arraySize">The total size of the collection to be drawn</param>
-        /// <param name="buttonStyle">The style to be applied to the rearrange buttons.</param>
+        /// <param name="buttonStyle">The style to be applied to the rearrange buttons</param>
         /// <param name="wantsToMoveElement">The action which is to be called if the element is to be moved</param>
-        /// <param name="guiLayoutOptions">Optional layout parameters for the rearrange buttons.</param>
+        /// <param name="guiLayoutOptions">Optional layout parameters for the rearrange buttons</param>
         protected virtual void DrawElementReArrangeUI(int index, int arraySize, GUIStyle buttonStyle, Action<int> wantsToMoveElement, params GUILayoutOption[] guiLayoutOptions)
         {
             if (arraySize == 1) return;
