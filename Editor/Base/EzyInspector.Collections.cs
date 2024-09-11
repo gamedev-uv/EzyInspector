@@ -29,6 +29,7 @@ namespace UV.EzyInspector.Editors
 
             //Draw the foldout header
             DrawFoldoutHeader(property, member, elementType, disabled);
+            if (!property.isExpanded) return property.serializedObject.ApplyModifiedProperties();
 
             bool madeChanges = false;
             using (var backGroundBox = new EditorGUILayout.VerticalScope(EditorStyles.helpBox))
@@ -101,10 +102,9 @@ namespace UV.EzyInspector.Editors
                     if (GUILayout.Button(clearList, GUILayout.Width(20), GUILayout.Height(EditorGUIUtility.singleLineHeight)))
                         property.ClearArray();
                 }
-            }
 
-            //If the property is expanded 
-            EditorGUILayout.EndFoldoutHeaderGroup();
+                EditorGUILayout.EndFoldoutHeaderGroup();
+            }
         }
 
         /// <summary>
