@@ -194,7 +194,7 @@ namespace UV.EzyInspector.Editors
                 var member = drawableMembers[i];
 
                 //Change indent level and readonly based on the parent 
-                EditorGUI.indentLevel = indent + member.Depth;
+                EditorGUI.indentLevel = member.Depth;
                 GUI.enabled = guiState;
 
                 var memberInfo = member.MemberInfo;
@@ -223,7 +223,7 @@ namespace UV.EzyInspector.Editors
                 //Draw a button for the method
                 if (member.TryGetAttribute(out ButtonAttribute button))
                 {
-                    //Skips methods if the object is an Object Reference 
+                    //Skips methods if the object is an UnityEngine.Object Reference 
                     var isNestedObjectMethod = member.ParentObject is Object @object && @object != target;
                     if (isNestedObjectMethod) continue;
 

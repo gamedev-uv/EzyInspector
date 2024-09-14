@@ -76,21 +76,27 @@ namespace UV.EzyInspector.Editors
         public virtual void DrawFoldoutHeader(SerializedProperty property, InspectorMember member, Type elementType, bool disabled)
         {
             //Draw collection header foldout 
-            using (var horizontal = new EditorGUILayout.HorizontalScope())
+            using (var horizontal = new EditorGUILayout.HorizontalScope(EditorStyles.inspectorFullWidthMargins))
             {
+                GUILayout.Space(member.Depth * 15);
+
                 //Collection foldout
                 GUI.enabled = true;
                 property.isExpanded = EditorGUILayout.BeginFoldoutHeaderGroup(property.isExpanded, property.displayName);
-                var foldoutRect = horizontal.rect;
-                foldoutRect.width -= 70;
 
                 //Handle the drap and drop functionality if the member isn't disabled
                 if (!disabled)
+                {
+                    var foldoutRect = horizontal.rect;
+                    foldoutRect.width -= 70 + member.Depth * 15;
                     HandleDragAndDrop(foldoutRect, property, member, elementType);
+                }
 
                 //Collection Size
                 GUI.enabled = !disabled;
-                property.arraySize = EditorGUILayout.IntField(property.arraySize, GUILayout.Width(50));
+                property.arraySize = EditorGUILayout.IntField(property.arraySize,
+                                                              GUILayout.MinWidth(50), GUILayout.MaxWidth(70)
+                                                              );
 
                 //Clear list button
                 using (new EditorGUI.DisabledGroupScope(property.arraySize == 0))
@@ -99,7 +105,9 @@ namespace UV.EzyInspector.Editors
                     {
                         tooltip = "Clear list"
                     };
-                    if (GUILayout.Button(clearList, GUILayout.Width(20), GUILayout.Height(EditorGUIUtility.singleLineHeight)))
+                    if (GUILayout.Button(clearList,
+                                         GUILayout.MinWidth(10), GUILayout.MaxWidth(20),
+                                         GUILayout.Height(EditorGUIUtility.singleLineHeight)))
                         property.ClearArray();
                 }
 
@@ -108,12 +116,11 @@ namespace UV.EzyInspector.Editors
         }
 
         /// <summary>
-        /// Draws the individual elements of a collection, providing options to update, delete, or move elements
+        /// Handles the drag and drop functionality for the collection
         /// </summary>
-        /// <param name="arrayProperty">The SerializedProperty representing the collection</param>
-        /// <param name="drawFoldout">Whether to draw foldouts for each element</param>
-        /// <param name="arrayMember">The member representing the collection property</param>
-        /// <param name="propertyUpdated">Action to invoke if the property was updated</param>
+        /// <param name="property">The SerializedProperty representing the collection</param>
+        /// <param name="member">Whether to draw foldouts for each element</param>
+        /// <param name="elementType">The type of elements stored in the collection</param>
         public virtual void HandleDragAndDrop(Rect foldoutRect, SerializedProperty property, InspectorMember member, Type elementType)
         {
             if (!elementType.IsSubclassOf(typeof(Object))) return;
@@ -216,7 +223,6 @@ namespace UV.EzyInspector.Editors
             var guiIndent = EditorGUI.indentLevel;
             if (drawFoldout)
                 EditorGUI.indentLevel++;
-
 
             //Draw foldout area for the element 
             using (var horizontal = new EditorGUILayout.HorizontalScope())

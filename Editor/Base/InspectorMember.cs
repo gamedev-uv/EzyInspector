@@ -60,9 +60,14 @@ namespace UV.EzyInspector
         public InspectorMember ShowIfMember { get; private set; }
 
         /// <summary>
-        /// The depth of the member 
+        /// The depth of the member
         /// </summary>
-        public int Depth { get; private set; }
+        public int Depth => MemberProperty == null ? EditorGUI.indentLevel : MemberProperty.depth;
+
+        /// <summary>
+        /// Whether the member is a collection or not
+        /// </summary>
+        public bool IsCollection { get; private set; }
 
         /// <summary>
         /// The cached drawable members 
@@ -193,7 +198,7 @@ namespace UV.EzyInspector
 
             //Find the serialized property for the member
             Path = Path.Replace($"{target}.", "");
-            Depth = Path.Count(x => x.Equals('.'));
+
             MemberProperty = serializedObject.FindProperty(Path);
             if (MemberProperty == null) return;
 
@@ -224,6 +229,7 @@ namespace UV.EzyInspector
         /// <param name="serializedObject">The serializedObject for the member</param>
         public void InitializeArray(InspectorMember rootMember, SerializedObject serializedObject)
         {
+            IsCollection = true;
             ChildMembers = Array.Empty<Member>();
             var members = new List<Member>();
 
@@ -261,8 +267,10 @@ namespace UV.EzyInspector
         public InspectorMember[] GetDrawableMembers(InspectorMember rootObject, SerializedObject serializedObject, bool includeMethods = true)
         {
             if (!IsSearchableType(MemberType))
+            {
                 if (Instance != null && !Instance.Equals(rootObject.Instance))
                     return Array.Empty<InspectorMember>();
+            }
 
             //If the members have already been found
             if (_cachedDrawableMembers != null && _cachedDrawableMembers.Length > 0) return _cachedDrawableMembers;
