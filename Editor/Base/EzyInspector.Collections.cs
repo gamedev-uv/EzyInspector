@@ -1,5 +1,4 @@
 using System;
-using System.Linq;
 using UnityEditor;
 using UnityEngine;
 using Object = UnityEngine.Object;
@@ -19,8 +18,7 @@ namespace UV.EzyInspector.Editors
         protected virtual bool DrawCollection(SerializedProperty property, InspectorMember member, bool disabled = false)
         {
             //Draw the default inspector if the type of collection isn't supported 
-            var elementType = member.MemberType.GetElementType();
-            elementType ??= member.MemberType.GetGenericArguments().First();
+            var elementType = member.ElementType;
             if (elementType == null)
             {
                 EditorGUILayout.PropertyField(property, true);
@@ -37,33 +35,47 @@ namespace UV.EzyInspector.Editors
                 //Draw all the elements
                 var drawFoldout = !elementType.IsSimpleType() && !elementType.IsSubclassOf(typeof(Object));
                 DrawCollectionElements(property, member, drawFoldout, () => madeChanges = true);
-
-                //Draw the Add and Remove buttons
-                using (new EditorGUILayout.HorizontalScope())
-                {
-                    //Add a space to align buttons to the right
-                    GUILayout.FlexibleSpace();
-
-                    //Add button
-                    if (GUILayout.Button(new GUIContent("Add", "Adds a new element to list")))
-                        property.arraySize++;
-
-                    //Remove button
-                    using (new EditorGUI.DisabledGroupScope(property.arraySize == 0))
-                    {
-                        if (GUILayout.Button(new GUIContent("Remove", "Removes the last element from the list")))
-                            property.arraySize--;
-                    }
-                }
+                DrawAddAndRemoveButtons(property, member);
             }
 
             //Apply any changes that were made
             madeChanges = madeChanges || property.serializedObject.ApplyModifiedProperties();
             if (madeChanges)
-                member.InitializeArray(RootMember, serializedObject);
+                member.InitializeCollection(RootMember, serializedObject);
 
             GUILayout.Space(10);
             return madeChanges;
+        }
+
+        /// <summary>
+        /// Draws the add and remove buttons for the given property and member
+        /// </summary>
+        /// <param name="property">The collection property itself</param>
+        /// <param name="member">The member for the property</param>
+        public virtual void DrawAddAndRemoveButtons(SerializedProperty property, InspectorMember member)
+        {
+            var addGUIContent = new GUIContent("Add", "Adds a new element to list");
+            var removeGUIContent = new GUIContent("Remove", "Removes the last element from the list");
+
+            //Draw the Add and Remove buttons
+            using (new EditorGUILayout.HorizontalScope())
+            {
+                //Add a space to align buttons to the right
+                GUILayout.FlexibleSpace();
+
+                //Add button
+                if (GUILayout.Button(addGUIContent))
+                    property.arraySize++;
+
+                //Remove button
+                using (new EditorGUI.DisabledGroupScope(property.arraySize == 0))
+                {
+                    if (GUILayout.Button(removeGUIContent))
+                        property.arraySize--;
+                }
+
+                return;
+            }
         }
 
         /// <summary>
@@ -138,7 +150,7 @@ namespace UV.EzyInspector.Editors
 
             //Update the property, and reinitialize members
             property.serializedObject.ApplyModifiedProperties();
-            member.InitializeArray(RootMember, serializedObject);
+            member.InitializeCollection(RootMember, serializedObject);
         }
 
         /// <summary>
@@ -179,7 +191,7 @@ namespace UV.EzyInspector.Editors
                 arrayProperty, () =>
                 {
                     //If any values were madeChanges; Reinitialize the children
-                    arrayMember.InitializeArray(RootMember, serializedObject);
+                    arrayMember.InitializeCollection(RootMember, serializedObject);
                     propertyUpdated?.Invoke();
                     return;
                 },

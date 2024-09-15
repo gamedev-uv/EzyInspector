@@ -8,9 +8,9 @@ using Object = UnityEngine.Object;
 namespace UV.EzyInspector.Editors
 {
     /// <summary>
-    /// Helper functions for drawing GUI elements in the Unity inspector
+    /// Helper functions used in the EzyInspector package
     /// </summary>
-    public static class GUIHelpers
+    public static class Helpers
     {
         /// <summary>
         /// Draws a button in the inspector with the provided GUI content
@@ -95,6 +95,23 @@ namespace UV.EzyInspector.Editors
             return CheckDragAndDrop(area, typeof(T))
                         .Cast<T>()
                         .ToArray();
+        }
+
+        /// <summary>
+        /// Finds and returns all the types that inherit from the provided baseType
+        /// </summary>
+        /// <param name="baseType">The base type</param>
+        /// <param name="excludeSystemNamespace">Whether the system namespace is to be excluded from the search</param>
+        /// <returns>An array of all the found child types</returns>
+        public static Type[] GetAllChildClasses(this Type baseType, bool excludeSystemNamespace = true)
+        {
+            if (baseType == null) return Array.Empty<Type>();
+
+            return AppDomain.CurrentDomain.GetAssemblies()
+                .Where(assembly => !excludeSystemNamespace || !assembly.FullName.StartsWith("System"))
+                .SelectMany(assembly => assembly.GetTypes())
+                .Where(type => type != null && type.IsClass && type.IsSubclassOf(baseType))
+                .ToArray();
         }
     }
 }

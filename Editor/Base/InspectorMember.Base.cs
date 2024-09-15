@@ -3,18 +3,18 @@ using UnityEngine;
 using UnityEditor;
 using System.Linq;
 using System.Reflection;
+using UnityEngine.Events;
 using System.Collections.Generic;
 using Object = UnityEngine.Object;
 
-namespace UV.EzyInspector
+namespace UV.EzyInspector.Editors
 {
     using EzyReflection;
-    using UnityEngine.Events;
 
     /// <summary>
     /// Defines a member which appears in the Inspector
     /// </summary>
-    public class InspectorMember : Member
+    public partial class InspectorMember : Member
     {
         public InspectorMember(object instance, string pathPrefix = null) : base(instance)
         {
@@ -35,39 +35,14 @@ namespace UV.EzyInspector
         public bool IsReadOnly { get; set; }
 
         /// <summary>
-        /// The parent member of the member
-        /// </summary>
-        public InspectorMember ParentMember { get; private set; }
-
-        /// <summary>
         /// The serialized property of the member
         /// </summary>
         public SerializedProperty MemberProperty { get; private set; }
 
         /// <summary>
-        /// Whether the member is dependent on a show if member 
-        /// </summary>
-        public bool IsShowIfDependent { get; private set; }
-
-        /// <summary>
-        /// The show if attribute on the member
-        /// </summary>
-        public ShowIfAttribute ShowIfInstance { get; private set; }
-
-        /// <summary>
-        /// The member whose value is to be compared 
-        /// </summary>
-        public InspectorMember ShowIfMember { get; private set; }
-
-        /// <summary>
         /// The depth of the member
         /// </summary>
         public int Depth => MemberProperty == null ? EditorGUI.indentLevel : MemberProperty.depth;
-
-        /// <summary>
-        /// Whether the member is a collection or not
-        /// </summary>
-        public bool IsCollection { get; private set; }
 
         /// <summary>
         /// The cached drawable members 
@@ -207,54 +182,7 @@ namespace UV.EzyInspector
 
             //If the member is an collection;
             if (!MemberProperty.isArray || HasAttribute<HideInInspector>()) return;
-            InitializeArray(rootMember, serializedObject);
-        }
-
-        /// <summary>
-        /// Initialized the info about the show if attribute if present on the member
-        /// </summary>
-        /// <param name="rootMember">The root of the member</param>
-        public void InitializeShowIfMember(InspectorMember rootMember)
-        {
-            if (!TryGetAttribute(out ShowIfAttribute showIf)) return;
-            ShowIfInstance = showIf;
-            ShowIfMember = rootMember.FindMember<InspectorMember>(showIf.PropertyName, true);
-            IsShowIfDependent = ShowIfMember != null;
-        }
-
-        /// <summary>
-        /// Initializes the member array for the given targetObject
-        /// </summary>
-        /// <param name="rootMember">The root member for the member</param>
-        /// <param name="serializedObject">The serializedObject for the member</param>
-        public void InitializeArray(InspectorMember rootMember, SerializedObject serializedObject)
-        {
-            IsCollection = true;
-            ChildMembers = Array.Empty<Member>();
-            var members = new List<Member>();
-
-            //Loop through and create a InspectorMember for each element
-            for (int i = 0; i < MemberProperty.arraySize; i++)
-            {
-                var element = MemberProperty.GetArrayElementAtIndex(i);
-                try
-                {
-                    var elementMember = new InspectorMember(element.boxedValue, element.propertyPath)
-                    {
-                        MemberProperty = serializedObject.FindProperty($"{Path}.Array.data[{i}]")
-                    };
-
-                    members.Add(elementMember);
-                }
-                catch
-                {
-                    Debug.LogWarning($"Couldn't fetch value for : ({Name} : [{MemberType}]). Make sure there are serialized members under it");
-                }
-            }
-
-            //Find all the drawable members under the array elements
-            ChildMembers = members.ToArray();
-            _cachedDrawableMembers = GetDrawableMembers(rootMember, serializedObject, true);
+            InitializeCollection(rootMember, serializedObject);
         }
 
         /// <summary>
@@ -308,26 +236,6 @@ namespace UV.EzyInspector
 
             _cachedDrawableMembers = drawableMembers.ToArray();
             return _cachedDrawableMembers;
-        }
-
-        /// <summary>
-        /// Whether the current member has a parent member
-        /// </summary>
-        /// <returns>Returns true or false based on the member has a parent or not</returns>
-        public bool HasParent()
-        {
-            return ParentMember != null;
-        }
-
-        /// <summary>
-        /// Whether the parent is expanded in the inspector 
-        /// </summary>
-        /// <returns>Returns true or false based on if the parent is expanded in the inspector</returns>
-        public bool IsParentExpanded()
-        {
-            if (!HasParent()) return true;
-            if (ParentMember.MemberProperty == null) return true;
-            return ParentMember.MemberProperty.isExpanded;
         }
 
         /// <summary>

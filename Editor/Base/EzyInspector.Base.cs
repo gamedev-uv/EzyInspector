@@ -260,7 +260,7 @@ namespace UV.EzyInspector.Editors
         {
             var property = member.MemberProperty;
             if (property == null) return false;
-            bool propertyUpdated = false;
+            bool propertyUpdated;
 
             //Disable it if needed
             var disabled = member.IsReadOnly || member.HasAttribute<ReadOnlyAttribute>();
@@ -268,17 +268,18 @@ namespace UV.EzyInspector.Editors
 
             //Draw the property 
             if (property.isArray && !member.MemberType.IsSimpleType())
-                propertyUpdated = DrawCollection(property, member, disabled);
+            {
+                if(member.HasAttribute<SerializeReference>())
+                    propertyUpdated = EditorGUILayout.PropertyField(property, true);
+                else
+                    propertyUpdated = DrawCollection(property, member, disabled);
+            }
             else
                 propertyUpdated = EditorGUILayout.PropertyField(property, false);
 
             EditorGUI.EndDisabledGroup();
             return propertyUpdated;
         }
-
-        #region Collection Drawing
-
-        #endregion
 
         /// <summary>
         /// Whether the member has the correct value as per as the ShowIf attribute
