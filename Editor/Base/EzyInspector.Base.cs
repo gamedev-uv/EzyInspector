@@ -227,7 +227,7 @@ namespace UV.EzyInspector.Editors
                     var isNestedObjectMethod = member.ParentObject is Object @object && @object != target;
                     if (isNestedObjectMethod) continue;
 
-                    DrawButton(member.ParentObject, memberInfo as MethodInfo, button);
+                    DrawButton(member, button);
                     continue;
                 }
 
@@ -334,18 +334,26 @@ namespace UV.EzyInspector.Editors
         /// <summary>
         /// Draws a button in the inspector for the given method styled by the button attribute
         /// </summary>
-        /// <param propertyPath="method">The parent object which conatains the method to be drawn</param>
-        /// <param propertyPath="method">The method to be drawn</param>
+        /// <param propertyPath="member">The member for which button is to be drawn</param>
         /// <param propertyPath="button">The button used to style the ui</param>
-        protected virtual void DrawButton(object parent, MethodInfo method, ButtonAttribute button)
+        protected virtual void DrawButton(InspectorMember member, ButtonAttribute button)
         {
+            if (member.IsHidden) return;
+
+            var parent = member.ParentObject;
+            var method = member.MemberInfo as MethodInfo;
+
+            EditorGUI.BeginDisabledGroup(member.IsReadOnly);
+
             string buttonName = button.DisplayName ?? method.Name;
             this.DrawButton(new(buttonName), () =>
             {
                 method?.Invoke(parent, null);
                 EditorUtility.SetDirty(this);
             });
+
             GUILayout.Space(5);
+            EditorGUI.EndDisabledGroup();
         }
     }
 }

@@ -174,11 +174,11 @@ namespace UV.EzyInspector.Editors
             //Find the serialized property for the member
             Path = Path.Replace($"{target}.", "");
 
-            MemberProperty = serializedObject.FindProperty(Path);
-            if (MemberProperty == null) return;
-
             //Initialize show if attribute
             InitializeShowIfMember(rootMember);
+
+            MemberProperty = serializedObject.FindProperty(Path);
+            if (MemberProperty == null) return;
 
             //If the member is an collection;
             if (!MemberProperty.isArray || HasAttribute<HideInInspector>()) return;
@@ -216,6 +216,7 @@ namespace UV.EzyInspector.Editors
                 {
                     if (!includeMethods) continue;
                     if (!member.HasAttribute<SerializeMemberAttribute>()) continue;
+                    member.InitializeShowIfMember(rootObject);
                     drawableMembers.Add(member);
                     continue;
                 }
