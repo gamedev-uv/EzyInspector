@@ -19,9 +19,22 @@ namespace UV.EzyInspector.Editors
         /// <param name="buttonGUI">The GUI content for the button</param>
         /// <param name="onButtonPressed">The action to invoke when the button is pressed</param>
         /// <param name="layoutOptions">Optional layout options for the button</param>
-        public static void DrawButton(this Editor _, GUIContent buttonGUI, System.Action onButtonPressed = null, params GUILayoutOption[] layoutOptions)
+        public static void DrawButton(this Editor _, GUIContent buttonGUI, Action onButtonPressed = null, params GUILayoutOption[] layoutOptions)
         {
             if (GUILayout.Button(buttonGUI, layoutOptions))
+                onButtonPressed?.Invoke();
+        }
+
+        /// <summary>
+        /// Draws a button in the given buttonRect with the given button content
+        /// </summary>
+        /// <param name="_">The editor in which the button is drawn</param>
+        /// <param name="buttonRect">The rect in which the button is to be drawn</param>
+        /// <param name="buttonGUI">The GUI content for the button</param>
+        /// <param name="onButtonPressed">The action to invoke when the button is pressed</param>
+        public static void DrawButton(this Editor _, Rect buttonRect, GUIContent buttonGUI, Action onButtonPressed = null)
+        {
+            if (GUI.Button(buttonRect, buttonGUI))
                 onButtonPressed?.Invoke();
         }
 

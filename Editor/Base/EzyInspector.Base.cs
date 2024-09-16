@@ -7,6 +7,7 @@ using Object = UnityEngine.Object;
 namespace UV.EzyInspector.Editors
 {
     using EzyReflection;
+    using UnityEngine.UIElements;
 
     /// <summary>
     /// A overriden inspector 
@@ -36,6 +37,11 @@ namespace UV.EzyInspector.Editors
         public (Member, OnInspectorUpdatedAttribute)[] OnInspectorUpdatedMethods { get; protected set; }
 
         /// <summary>
+        /// All the methods which are to be called when the scene gui is drawn 
+        /// </summary>
+        public (Member, OnSceneGUIAttribute)[] OnSceneGUIMethods { get; protected set; }
+
+        /// <summary>
         /// Whether the default mono view is to be displaced
         /// </summary>
         public bool DrawDefaultMonoGUI { get; protected set; }
@@ -46,6 +52,18 @@ namespace UV.EzyInspector.Editors
         public bool HideMonoScript { get; protected set; }
 
         protected virtual void OnEnable() => Init();
+
+        private void OnSceneGUI()
+        {
+            for (int i = 0; i < OnSceneGUIMethods.Length; i++)
+            {
+                var member = OnSceneGUIMethods[i].Item1;
+                if (member == null) continue;
+
+                var method = member.MemberInfo as MethodInfo;
+                method?.Invoke(member.ParentObject, null);
+            }
+        }
 
         /// <summary>
         /// Initializes all the needed variables
@@ -60,6 +78,9 @@ namespace UV.EzyInspector.Editors
 
             //Find the OnInspectorUpdateMethods
             OnInspectorUpdatedMethods = RootMember.FindMembersWithAttribute<OnInspectorUpdatedAttribute>(true);
+
+            //Find the OnSceneGUIMethods
+            OnSceneGUIMethods = RootMember.FindMembersWithAttribute<OnSceneGUIAttribute>(true);
 
             //Whether the open script button is to be hidden
             HideMonoScript = RootMember.HasAttribute<HideMonoGUIAttribute>();
@@ -78,6 +99,7 @@ namespace UV.EzyInspector.Editors
         public override void OnInspectorGUI()
         {
             DrawMonoScriptUI();
+            serializedObject.Update();
             EditorGUI.BeginChangeCheck();
 
             //Draw the members
@@ -120,7 +142,7 @@ namespace UV.EzyInspector.Editors
                 return;
             }
 
-            using (new EditorGUILayout.HorizontalScope(EditorStyles.helpBox))
+            using (new EditorGUILayout.VerticalScope(EditorStyles.helpBox))
             {
                 //Draw the open script button
                 var openGUI = EditorGUIUtility.IconContent("d_boo Script Icon");
@@ -133,30 +155,32 @@ namespace UV.EzyInspector.Editors
                 },
                 GUILayout.Height(EditorGUIUtility.singleLineHeight));
 
+                var drawRect = GUILayoutUtility.GetLastRect();
+                drawRect.y += drawRect.height * 1.2f;
+                drawRect.width /= 2f;
+
                 //Draw the ping script button
                 var pingGUI = EditorGUIUtility.IconContent("d_Folder Icon");
                 pingGUI.tooltip = "Ping Script\nPings the script in the Project folder";
-                this.DrawButton(pingGUI, () =>
+                this.DrawButton(drawRect, pingGUI, () =>
                 {
                     EditorUtility.FocusProjectWindow();
                     EditorGUIUtility.PingObject(TargetMono);
-                },
-                GUILayout.Height(EditorGUIUtility.singleLineHeight),
-                GUILayout.Width(EditorGUIUtility.singleLineHeight * 2));
+                });
 
                 //Draw the select script button
+                drawRect.x += drawRect.width;
                 var selectGUI = EditorGUIUtility.IconContent("d_Selectable Icon");
                 selectGUI.tooltip = "Select Script\nSelect the given script";
-                this.DrawButton(selectGUI, () =>
+                this.DrawButton(drawRect, selectGUI, () =>
                 {
                     EditorUtility.FocusProjectWindow();
                     Selection.activeObject = TargetMono;
                     EditorGUIUtility.PingObject(TargetMono);
-                },
-                GUILayout.Height(EditorGUIUtility.singleLineHeight),
-                GUILayout.Width(EditorGUIUtility.singleLineHeight * 2));
+                });
             }
-            GUILayout.Space(10);
+
+            GUILayout.Space(EditorGUIUtility.singleLineHeight * 1.5f);
         }
 
         /// <summary>
@@ -197,7 +221,6 @@ namespace UV.EzyInspector.Editors
                 EditorGUI.indentLevel = member.Depth;
                 GUI.enabled = guiState;
 
-                var memberInfo = member.MemberInfo;
                 if (!member.IsParentExpanded()) continue;
 
                 //Check if member has ShowIfAttribute attribute and draw it accordingly 
@@ -227,7 +250,7 @@ namespace UV.EzyInspector.Editors
                     var isNestedObjectMethod = member.ParentObject is Object @object && @object != target;
                     if (isNestedObjectMethod) continue;
 
-                    DrawButton(member, button);
+                    updated = updated || DrawButton(member, button);
                     continue;
                 }
 
@@ -244,11 +267,31 @@ namespace UV.EzyInspector.Editors
                     continue;
                 }
 
+                //If it is a button toggle
+                if (member.TryGetAttribute(out ToggleButtonAttribute toggle))
+                {
+                    var property = member.MemberProperty;
+                    if (property.propertyType == SerializedPropertyType.Boolean)
+                    {
+                        var buttonName = property.boolValue ? toggle.OnLabel : toggle.OffLabel;
+                        if (!GUILayout.Button(buttonName)) continue;
+
+                        //If the toggle was updated
+                        property.boolValue = !property.boolValue;
+                        updated = true;
+                        continue;
+                    }
+
+                    //Draw a help box and then the member itself
+                    EditorGUILayout.HelpBox("[ToggleButton] is only valid on booleans", MessageType.Error);
+                }
+
                 //Draw the member
                 if (DrawMember(member))
                     updated = true;
             }
 
+            EditorGUI.indentLevel = indent;
             return updated || serializedObject.ApplyModifiedProperties();
         }
 
@@ -269,7 +312,7 @@ namespace UV.EzyInspector.Editors
             //Draw the property 
             if (property.isArray && !member.MemberType.IsSimpleType())
             {
-                if(member.HasAttribute<SerializeReference>())
+                if (member.HasAttribute<SerializeReference>())
                     propertyUpdated = EditorGUILayout.PropertyField(property, true);
                 else
                     propertyUpdated = DrawCollection(property, member, disabled);
@@ -336,24 +379,28 @@ namespace UV.EzyInspector.Editors
         /// </summary>
         /// <param propertyPath="member">The member for which button is to be drawn</param>
         /// <param propertyPath="button">The button used to style the ui</param>
-        protected virtual void DrawButton(InspectorMember member, ButtonAttribute button)
+        protected virtual bool DrawButton(InspectorMember member, ButtonAttribute button)
         {
-            if (member.IsHidden) return;
+            if (member.IsHidden) return false;
 
             var parent = member.ParentObject;
             var method = member.MemberInfo as MethodInfo;
 
-            EditorGUI.BeginDisabledGroup(member.IsReadOnly);
-
-            string buttonName = button.DisplayName ?? method.Name;
-            this.DrawButton(new(buttonName), () =>
+            using (new EditorGUI.DisabledGroupScope(member.IsReadOnly))
             {
-                method?.Invoke(parent, null);
-                EditorUtility.SetDirty(this);
-            });
+                string buttonName = button.DisplayName ?? method.Name;
+                if (GUILayout.Button(buttonName))
+                {
+                    method?.Invoke(parent, null);
+                    serializedObject.Update();
+                    if (serializedObject.ApplyModifiedProperties())
+                        EditorUtility.SetDirty(target);
+                    return true;
+                }
 
-            GUILayout.Space(5);
-            EditorGUI.EndDisabledGroup();
+                GUILayout.Space(5);
+                return false;
+            }
         }
     }
 }

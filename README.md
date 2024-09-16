@@ -19,6 +19,8 @@
 
       - [Button](#button)
 
+      - [ToggleButton](#togglebutton)
+
       - [DisplayAsLabel](#displayaslabel)
 
       - [TagSelector](#tagselector)
@@ -46,6 +48,7 @@
       <summary><a href="#callbacks">Callbacks</a></summary>
 
       - [OnInspectorUpdated](#oninspectorupdated)
+      - [OnSceneGUI](#onscenegui)
 
     </details>
 
@@ -128,6 +131,31 @@ public class ExampleButtonScript : MonoBehaviour
 }
 ```
 ![](.README/custombutton.gif)
+
+### ToggleButton
+
+Creates a toggle button in the inspector for the given bool.
+
+**`ToggleButtonAttribute(string onLabel, string offLabel)`**  
+Displays a toggle button in the inspector with the specified labels for the on and off states.
+
+- **Parameters:**
+  - `onLabel` (string): The label to display when the button is toggled on.
+  - `offLabel` (string): The label to display when the button is toggled off.
+
+```csharp
+using UnityEngine;
+using UV.EzyInspector;
+
+public class ToggleButtonExample : MonoBehaviour
+{
+    [SerializeField, ToggleButton("[ON] Click to turn off", "[OFF] Click to turn on")]
+    private bool _toggleExample;
+}
+```
+![](.README/togglebutton.gif)
+> [!NOTE]
+> Only valid on booleans
 
 ### DisplayAsLabel
 
@@ -360,3 +388,38 @@ public class ExampleScript : MonoBehaviour
 }
 ```
 ![](.README/oninspectorupdated.gif)
+
+### OnSceneGUI
+
+Calls the method whenever the Scene View GUI is drawn for the editor.
+
+**`OnSceneGUIAttribute()`**  
+   Invokes the method whenever the Scene View GUI is being drawn, allowing custom handles, labels, and other editor-specific visuals to be added to the scene.
+
+```csharp
+using UnityEngine;
+#if UNITY_EDITOR
+    using UnityEditor;
+    using UV.EzyInspector.Editors;
+#endif
+
+public class OnSceneGUIExample : MonoBehaviour
+{
+#if UNITY_EDITOR
+    [OnSceneGUI]
+    private void DrawHandles()
+    {
+        // Draw a solid disc at the object's position
+        Handles.color = Color.black;
+        Handles.DrawSolidDisc(transform.position, transform.up, 2);
+        
+        // Display a label at the object's position
+        Handles.Label(transform.position, "That's all it takes to draw handles!");
+    }
+#endif
+}
+```
+> [!NOTE]  
+> This attribute only works within the Unity Editor. The example code uses preprocessor directives (`#if UNITY_EDITOR`) to ensure that the editor-specific code is only compiled when running in the Unity Editor.
+
+![](.README/onscenegui.png)
