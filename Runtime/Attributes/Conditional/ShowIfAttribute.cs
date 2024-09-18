@@ -27,11 +27,11 @@ namespace UV.EzyInspector
         /// </summary>
         /// <param name="propertyName">The name of the property which needs to be used.</param>
         /// <param name="hideMode">The hide mode of the property when the condition is not met.</param>
-        /// <param name="targetValue">The target values of the property which determine when the property is shown.</param>
-        public ShowIfAttribute(string propertyName, HideMode hideMode, params object[] targetValue)
+        /// <param name="targetValues">The target values of the property which determine when the property is shown.</param>
+        public ShowIfAttribute(string propertyName, HideMode hideMode, params object[] targetValues)
         {
             PropertyName = propertyName;
-            TargetValues = targetValue;
+            TargetValues = targetValues;
             HideMode = hideMode;
         }
 

@@ -174,7 +174,7 @@ using UV.EzyInspector;
 
 public class LabelExample : MonoBehaviour
 {
-    [SerializeField] private int _age = 18;
+    [SerializeField] private int _age = 18;  
 
     [DisplayAsLabel("Qualified : {1}")] private bool _isQualified => _age >= 18;
 }
@@ -342,6 +342,21 @@ public class ShowIfExample : MonoBehaviour
 > [!Tip]\
 > Here integers and booleans have been used but you can compare multiple values of any type.\
 > You can directly pass in the name of the property as shown in the last 2 examples but usage of ``nameof`` would be suggested
+
+> [!Warning]\
+> While the `ShowIfAttribute` supports positional arguments, consider using named arguments for improved readability and type safety:
+> ```cs
+> [ShowIf(propertyName: nameof(foo), hideMode: HideMode.ReadOnly, targetValues: values)]
+> public bool myProperty;
+> ```
+> By explicitly specifying parameter names, you reduce the risk of unintended type conversions, especially when dealing with `int` values that might be interpreted as a `HideMode` enum.
+> ```cs
+> [ShowIf(nameof(myInt), hideMode: HideMode.ReadOnly, targetValues: new object[] { 1, 2, 3 })]
+> ```
+> or by specifying the HideMode explicitly 
+> ```cs
+> [ShowIf(nameof(myInt), HideMode.ReadOnly, 1, 2, 3)]
+>```
 
 ## Callbacks
 
