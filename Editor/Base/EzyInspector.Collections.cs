@@ -107,7 +107,7 @@ namespace UV.EzyInspector.Editors
                 //Collection Size
                 GUI.enabled = !disabled;
                 property.arraySize = EditorGUILayout.IntField(property.arraySize,
-                                                              GUILayout.MinWidth(50), GUILayout.MaxWidth(70)
+                                                              GUILayout.MinWidth(70), GUILayout.MaxWidth(100)
                                                               );
 
                 //Clear list button
@@ -239,40 +239,26 @@ namespace UV.EzyInspector.Editors
             //Draw foldout area for the element 
             using (var horizontal = new EditorGUILayout.HorizontalScope())
             {
-                GUILayoutOption[] guiLayoutOptions = new GUILayoutOption[] { GUILayout.Width(20), GUILayout.Height(18) };
-                GUIStyle buttonStyle = new(EditorStyles.iconButton)
-                {
-                    fixedHeight = 20,
-                    fixedWidth = 20,
-                };
+                DrawElementReArrangeUI(index, collectionProperty.arraySize, wantsToMoveElement);
 
                 //If a foldout is to be drawn 
+                var deleted = false;
                 if (drawFoldout)
                 {
                     element.isExpanded = EditorGUILayout.Foldout(element.isExpanded, element.displayName, true);
-                    var deleted = false;
-
-                    DrawElementReArrangeUI(index, collectionProperty.arraySize, buttonStyle, wantsToMoveElement, guiLayoutOptions);
-                    DrawElementRemoveButton(buttonStyle, () =>
+                    DrawElementRemoveButton(() =>
                     {
-                        wantsToDelete?.Invoke();
                         deleted = true;
+                        wantsToDelete?.Invoke();
                         return;
-
-                    }, guiLayoutOptions);
+                    });
 
                     horizontal.Dispose();
-
                     if (deleted || !element.isExpanded)
                     {
                         EditorGUI.indentLevel = guiIndent;
                         return;
                     }
-                }
-                else
-                {
-                    //Draw re arrange buttons on left if there is no foldout 
-                    DrawElementReArrangeUI(index, collectionProperty.arraySize, buttonStyle, wantsToMoveElement, guiLayoutOptions);
                 }
 
                 //Draw the members under the collection element
@@ -280,7 +266,7 @@ namespace UV.EzyInspector.Editors
                     onPropertyUpdated?.Invoke();
 
                 if (!drawFoldout)
-                    DrawElementRemoveButton(buttonStyle, wantsToDelete, guiLayoutOptions);
+                    DrawElementRemoveButton(wantsToDelete);
             }
 
             EditorGUI.indentLevel = guiIndent;
@@ -289,40 +275,94 @@ namespace UV.EzyInspector.Editors
         /// <summary>
         /// Draws a button for removing an element from a list
         /// </summary>
-        /// <param name="buttonStyle">The style to be applied to the remove button</param>
         /// <param name="wantsToDelete">The action to be invoked when the remove button is clicked</param>
-        /// <param name="guiLayoutOptions">Optional layout parameters for the remove button</param>
-        protected virtual void DrawElementRemoveButton(GUIStyle buttonStyle, Action wantsToDelete, params GUILayoutOption[] guiLayoutOptions)
+        protected virtual void DrawElementRemoveButton(Action wantsToDelete)
         {
             GUIContent removeButton = new(EditorGUIUtility.IconContent("d_winbtn_win_close@2x"))
             {
                 tooltip = "Removes the element from the list"
             };
 
-            if (GUILayout.Button(removeButton, buttonStyle, guiLayoutOptions))
+            if (GUILayout.Button(removeButton, GUILayout.Width(20), GUILayout.Height(20)))
                 wantsToDelete?.Invoke();
         }
 
         /// <summary>
-        /// Draws the GUI for rearranging an element within a list.
+        /// Draws the GUI for rearranging an element within a list with drag-and-drop functionality.
         /// </summary>
-        /// <param name="index">The index of the element which is to be drawn</param>
-        /// <param name="arraySize">The total size of the collection to be drawn</param>
-        /// <param name="buttonStyle">The style to be applied to the rearrange buttons</param>
-        /// <param name="wantsToMoveElement">The action which is to be called if the element is to be moved</param>
-        /// <param name="guiLayoutOptions">Optional layout parameters for the rearrange buttons</param>
-        protected virtual void DrawElementReArrangeUI(int index, int arraySize, GUIStyle buttonStyle, Action<int> wantsToMoveElement, params GUILayoutOption[] guiLayoutOptions)
+        /// <param name="index">The index of the element to be drawn</param>
+        /// <param name="arraySize">The total size of the collection</param>
+        /// <param name="wantsToMoveElement">Action invoked when the element is moved</param>
+        protected virtual void DrawElementReArrangeUI(int index, int arraySize, Action<int> wantsToMoveElement)
         {
             if (arraySize == 1) return;
 
-            var firstElement = index == 0;
-            var lastElement = index == arraySize - 1;
+            //Define the size and offset for the drag handle
+            const float handleWidth = 15f;
+            const float handleHeight = 18f;
+            const float xOffset = 5f;
+            const float yOffset = 8f;
 
-            if (GUILayout.Button(Resources.Load<Texture>("caret-up"), buttonStyle))
-                wantsToMoveElement?.Invoke(firstElement ? arraySize - 1 : --index);
+            //Create the handle rect
+            var handleRect = GUILayoutUtility.GetRect(handleWidth, handleHeight, GUILayout.ExpandWidth(false));
+            handleRect.x += xOffset;
+            handleRect.y += yOffset;
 
-            if (GUILayout.Button(Resources.Load<Texture>("caret-down"), buttonStyle))
-                wantsToMoveElement?.Invoke(lastElement ? 0 : ++index);
+            //Draw the actual box (drag handle) at the specified rect
+            GUI.Box(handleRect, "", new GUIStyle("RL DragHandle"));
+            handleRect.y -= handleRect.height * 0.4f;
+            handleRect.x -= xOffset;
+
+            //Handle drag events
+            var currentEvent = Event.current;
+
+            switch (currentEvent.type)
+            {
+                case EventType.MouseDown:
+                    if (handleRect.Contains(currentEvent.mousePosition))
+                    {
+                        //Start dragging
+                        DragAndDrop.PrepareStartDrag();
+                        DragAndDrop.objectReferences = new Object[0];
+                        DragAndDrop.SetGenericData("DraggedElementIndex", index);
+                        DragAndDrop.StartDrag("DraggingElement");
+
+                        //Mark the event as used
+                        currentEvent.Use();
+                    }
+                    break;
+
+                case EventType.DragUpdated:
+                    if (handleRect.Contains(currentEvent.mousePosition))
+                    {
+                        //Show the move icon during drag
+                        DragAndDrop.visualMode = DragAndDropVisualMode.Move;
+                        currentEvent.Use();
+                    }
+                    break;
+
+                case EventType.DragPerform:
+                    if (handleRect.Contains(currentEvent.mousePosition))
+                    {
+                        var draggedIndex = (int)DragAndDrop.GetGenericData("DraggedElementIndex");
+
+                        //Invoke the move action with the dragged and target indices
+                        if (draggedIndex != index)
+                            wantsToMoveElement?.Invoke(draggedIndex);
+
+                        //Finalize the drag
+                        DragAndDrop.AcceptDrag();
+                        currentEvent.Use();
+                    }
+                    break;
+
+                //Highlight 
+                case EventType.Repaint:
+                    if (DragAndDrop.activeControlID == 0 && handleRect.Contains(currentEvent.mousePosition))
+                        EditorGUI.DrawRect(handleRect, new Color(0.9f, 0.9f, 0.9f, 0.1f));
+                    break;
+            }
         }
+
     }
 }
