@@ -55,6 +55,7 @@ namespace UV.EzyInspector.Editors
 
         private void OnSceneGUI()
         {
+            if (OnSceneGUIMethods == null || OnSceneGUIMethods.Length == 0) return;
             for (int i = 0; i < OnSceneGUIMethods.Length; i++)
             {
                 var member = OnSceneGUIMethods[i].Item1;
