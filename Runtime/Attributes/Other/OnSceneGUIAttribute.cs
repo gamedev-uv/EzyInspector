@@ -1,6 +1,6 @@
 using System;
 
-namespace UV.EzyInspector.Editors
+namespace UV.EzyInspector
 {
     /// <summary>
     /// Calls the method whenever the SceneGUI is drawn for the editor 

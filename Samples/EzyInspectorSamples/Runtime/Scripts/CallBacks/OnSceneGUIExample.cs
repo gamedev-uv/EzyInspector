@@ -1,7 +1,7 @@
 using UnityEngine;
 #if UNITY_EDITOR
 using UnityEditor;
-using UV.EzyInspector.Editors;
+using UV.EzyInspector;
 #endif
 
 public class OnSceneGUIExample : MonoBehaviour
