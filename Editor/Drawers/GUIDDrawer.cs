@@ -30,16 +30,18 @@ namespace UV.EzyInspector.Editors
             //Fetch the GUID and assign it back to the property 
             property.stringValue = AssetDatabase.AssetPathToGUID(AssetDatabase.GetAssetPath(SO));
 
-            //Draw the Copy button
-            EditorGUILayout.BeginHorizontal();
-            if (GUILayout.Button("Copy GUID"))
-                GUIUtility.systemCopyBuffer = property.stringValue;
-
             //Draw the disabled property 
+            Rect drawRect = new(position);
+            drawRect.width *= 0.8f;
             EditorGUI.BeginDisabledGroup(true);
-            EditorGUILayout.PropertyField(property, new(""), property.isArray);
+            EditorGUI.PropertyField(drawRect, property, new GUIContent());
             EditorGUI.EndDisabledGroup();
-            EditorGUILayout.EndHorizontal();
+
+            //Draw the Copy button
+            drawRect.x += drawRect.width;
+            drawRect.width = position.width - drawRect.width;
+            if (GUI.Button(drawRect, $"Copy {property.displayName}"))
+                GUIUtility.systemCopyBuffer = property.stringValue;
         }
     }
 }
