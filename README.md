@@ -26,6 +26,8 @@
       - [TagSelector](#tagselector)
 
       - [ReadOnly](#readonly)
+      
+      - [UsePropertyDrawer](#usepropertydrawer)
 
     </details>
     <details>
@@ -214,6 +216,26 @@ public class ReadOnlyExample : MonoBehaviour
 ```
 ![](.README/readonly.png)
 
+### UsePropertyDrawer
+
+Forces the EzyInspectorEditor to use Unity's property drawer for displaying fields, instead of custom drawing them.
+
+```csharp
+using System;
+using UnityEngine;
+using UV.EzyInspector;
+
+[Serializable]
+[UsePropertyDrawer]
+public class MyCustomData
+{
+    [SerializeField] private int value;
+    [SerializeField] private float size;
+}
+```
+
+> [!Warning]\
+> This makes it so the custom attributes which are defined in the custom editor will not work!
 
 ## Serialization
 

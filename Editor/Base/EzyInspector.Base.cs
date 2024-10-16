@@ -7,7 +7,6 @@ using Object = UnityEngine.Object;
 namespace UV.EzyInspector.Editors
 {
     using EzyReflection;
-    using UnityEngine.UIElements;
 
     /// <summary>
     /// A overriden inspector 
@@ -243,6 +242,10 @@ namespace UV.EzyInspector.Editors
                     if (editMode.HideMode == HideMode.Hide) member.IsHidden = true;
                     if (editMode.HideMode == HideMode.ReadOnly) member.IsReadOnly = true;
                 }
+               
+                //Check whether it has the hide in inspector if it does hide it 
+                if (member.IsMemberHidden() || member.HasAttribute<HideInInspector>())
+                    continue;
 
                 //Draw a button for the method
                 if (member.TryGetAttribute(out ButtonAttribute button))
@@ -251,13 +254,9 @@ namespace UV.EzyInspector.Editors
                     var isNestedObjectMethod = member.ParentObject is Object @object && @object != target;
                     if (isNestedObjectMethod) continue;
 
-                    updated = updated || DrawButton(member, button);
+                    updated = DrawButton(member, button) || updated;
                     continue;
                 }
-
-                //Check whether it has the hide in inspector if it does hide it 
-                if (member.IsMemberHidden() || member.HasAttribute<HideInInspector>())
-                    continue;
 
                 //If it is a label
                 if (member.TryGetAttribute(out DisplayAsLabel label))

@@ -200,6 +200,10 @@ namespace UV.EzyInspector.Editors
                     return Array.Empty<InspectorMember>();
             }
 
+            //If it needs to use the property drawer 
+            if (HasAttribute<UsePropertyDrawer>())
+                return Array.Empty<InspectorMember>();
+
             //If the members have already been found
             if (_cachedDrawableMembers != null && _cachedDrawableMembers.Length > 0) return _cachedDrawableMembers;
 
