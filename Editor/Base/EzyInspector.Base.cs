@@ -242,7 +242,7 @@ namespace UV.EzyInspector.Editors
                     if (editMode.HideMode == HideMode.Hide) member.IsHidden = true;
                     if (editMode.HideMode == HideMode.ReadOnly) member.IsReadOnly = true;
                 }
-               
+
                 //Check whether it has the hide in inspector if it does hide it 
                 if (member.IsMemberHidden() || member.HasAttribute<HideInInspector>())
                     continue;
@@ -259,10 +259,10 @@ namespace UV.EzyInspector.Editors
                 }
 
                 //If it is a label
-                if (member.TryGetAttribute(out DisplayAsLabel label))
+                if (member.TryGetAttribute(out DisplayAsLabel label) && member.MemberProperty != null)
                 {
                     GUILayout.Label(label.FormattedString
-                                                       .Replace("{0}", member.Name)
+                                                       .Replace("{0}", member.MemberProperty == null ? member.Name : member.MemberProperty.displayName)
                                                        .Replace("{1}", $"{member.GetValue()}"));
                     continue;
                 }
@@ -314,7 +314,7 @@ namespace UV.EzyInspector.Editors
             {
                 if (member.HasAttribute<SerializeReference>())
                     propertyUpdated = EditorGUILayout.PropertyField(property, true);
-                else if(member.ElementType.GetCustomAttribute<UsePropertyDrawer>() == null)
+                else if (member.ElementType.GetCustomAttribute<UsePropertyDrawer>() == null)
                     propertyUpdated = DrawCollection(property, member, disabled);
             }
             else
