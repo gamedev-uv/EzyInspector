@@ -192,6 +192,7 @@ namespace UV.EzyInspector.Editors
         /// <returns>Returns true or false based on if a property was madeChanges or not</returns>
         protected virtual bool DrawSerializedMembers(InspectorMember rootMember, bool includeMethods = true, bool includeSelf = false)
         {
+            if(rootMember == null) return false;    
             var members = rootMember.GetDrawableMembers(RootMember, serializedObject, includeMethods);
             if (includeSelf)
                 members = members.Append(rootMember).ToArray();
