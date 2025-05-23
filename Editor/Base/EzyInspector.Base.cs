@@ -192,7 +192,7 @@ namespace UV.EzyInspector.Editors
         /// <returns>Returns true or false based on if a property was madeChanges or not</returns>
         protected virtual bool DrawSerializedMembers(InspectorMember rootMember, bool includeMethods = true, bool includeSelf = false)
         {
-            if(rootMember == null) return false;    
+            if (rootMember == null) return false;
             var members = rootMember.GetDrawableMembers(RootMember, serializedObject, includeMethods);
             if (includeSelf)
                 members = members.Append(rootMember).ToArray();
@@ -334,8 +334,14 @@ namespace UV.EzyInspector.Editors
         /// <returns>returns true or false based on if the value is correct</returns>
         protected virtual bool CorrectShowIfValue(InspectorMember rootMember, InspectorMember member, ShowIfAttribute showIf)
         {
-            //Find finding the showIfMember
-            var showIfMember = rootMember.FindMember<InspectorMember>(showIf.PropertyName, true);
+            //Find the show if target member from the member
+            //If the member doesn't have it search for it in its parent until found or it runs out of parents
+            var showIfMember = member.FindMember<InspectorMember>(showIf.PropertyName, true);
+            while (showIfMember == null && member.ParentMember != null)
+            {
+                showIfMember = member.ParentMember.FindMember<InspectorMember>(showIf.PropertyName, true);
+                member = member.ParentMember;
+            }
 
             //If the value is null display a help box accordingly 
             if (showIfMember == null)
