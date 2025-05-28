@@ -113,10 +113,24 @@ namespace UV.EzyInspector.Editors
                 //Clear list button
                 using (new EditorGUI.DisabledGroupScope(property.arraySize == 0))
                 {
-                    GUIContent clearList = new(EditorGUIUtility.IconContent("d_winbtn_win_close@2x"))
+                    var closeIcon = EditorGUIUtility.IconContent("d_winbtn_win_close@2x");
+                    GUIContent clearList;
+                    if (closeIcon == null)
                     {
-                        tooltip = "Clear list"
-                    };
+                        Debug.Log("Icon named 'd_winbtn_win_close@2x' couldn't be found!");
+                        clearList = new(closeIcon)
+                        {
+                            tooltip = "Clear list"
+                        };
+                    }
+                    else
+                    {
+                        clearList = new("X")
+                        {
+                            tooltip = "Clear list"
+                        };
+                    }
+
                     if (GUILayout.Button(clearList,
                                          GUILayout.MinWidth(10), GUILayout.MaxWidth(20),
                                          GUILayout.Height(EditorGUIUtility.singleLineHeight)))
