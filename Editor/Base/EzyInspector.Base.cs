@@ -375,7 +375,7 @@ namespace UV.EzyInspector.Editors
 
                 //Checks whether the values are the same or not
                 if (typedValue.Equals(targetValue))
-                    return true;
+                    return !showIfMember.IsHidden;
             }
 
             return false;
