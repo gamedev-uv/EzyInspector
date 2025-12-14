@@ -12,7 +12,6 @@ namespace UV.EzyInspector.Editors
     /// A overriden inspector 
     /// </summary>
     [CanEditMultipleObjects]
-    [CustomEditor(typeof(Object), true)]
     public partial class EzyInspector : Editor
     {
         /// <summary>
