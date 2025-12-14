@@ -213,7 +213,7 @@ namespace UV.EzyInspector.Editors
         public InspectorMember[] GetDrawableMembers(InspectorMember rootObject, SerializedObject serializedObject, bool includeMethods = true)
         {
             // clear cache
-            if (Event.current.type == EventType.Layout)
+            if (Event.current != null && Event.current.type == EventType.Layout)
                 _cachedDrawableMembers = null;
             
             if (!IsSearchableType(MemberType))
