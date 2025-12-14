@@ -111,7 +111,7 @@ namespace UV.EzyInspector.Editors
                 if (!EditorGUI.EndChangeCheck()) return;
                 serializedObject.ApplyModifiedProperties();
             }
-            catch (ObjectDisposedException)
+            catch (System.ObjectDisposedException)
             {
                 // Serialized state was torn down - abort this draw
                 return;
