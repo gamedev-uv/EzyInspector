@@ -42,7 +42,25 @@ namespace UV.EzyInspector.Editors
         /// <summary>
         /// The depth of the member
         /// </summary>
-        public int Depth => MemberProperty == null ? EditorGUI.indentLevel : MemberProperty.depth;
+        public int Depth
+        {
+            get
+            {
+                if (MemberProperty == null)
+                    return EditorGUI.indentLevel;
+
+                try
+                {
+                    return MemberProperty.depth;
+                }
+                catch (InvalidOperationException)
+                {
+                    // SerializedProperty iterator is invalid (playmode exit / rebuild)
+                    return EditorGUI.indentLevel;
+                }
+            }
+        }
+
 
         /// <summary>
         /// The cached drawable members 
@@ -194,6 +212,10 @@ namespace UV.EzyInspector.Editors
         /// <returns>Returns all the members which are to be drawn on the inspector</returns>
         public InspectorMember[] GetDrawableMembers(InspectorMember rootObject, SerializedObject serializedObject, bool includeMethods = true)
         {
+            // clear cache
+            if (Event.current.type == EventType.Layout)
+                _cachedDrawableMembers = null;
+            
             if (!IsSearchableType(MemberType))
             {
                 if (Instance != null && !Instance.Equals(rootObject.Instance))
@@ -254,4 +276,3 @@ namespace UV.EzyInspector.Editors
         }
     }
 }
-
