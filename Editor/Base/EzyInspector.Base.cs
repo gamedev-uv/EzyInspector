@@ -97,36 +97,36 @@ namespace UV.EzyInspector.Editors
 
         public override void OnInspectorGUI()
         {
-            DrawMonoScriptUI();
-            serializedObject.Update();
-            
-            //Rebuild inspector tree every frame
-            RootMember = new InspectorMember(target);
-            DrawableMembers = RootMember.GetDrawableMembers(RootMember, serializedObject);
-            
-            EditorGUI.BeginChangeCheck();
-
-            //Draw the members
-            DrawSerializedMembers(RootMember, DrawableMembers);
-
-            //If any changes were made save them
-            if (EditorGUI.EndChangeCheck())
+            try
             {
+                DrawMonoScriptUI();
+                serializedObject.Update();
+                EditorGUI.BeginChangeCheck();
+            
+                //Draw the members
+                DrawSerializedMembers(RootMember);
+            
+                //If any changes were made save them
+                if (!EditorGUI.EndChangeCheck()) return;
                 serializedObject.ApplyModifiedProperties();
-                InvokeInspectorUpdatedMethods();
             }
-        }
-        
-        private void InvokeInspectorUpdatedMethods()
-        {
-            if (OnInspectorUpdatedMethods == null) return;
-
-            foreach (var (member, attribute) in OnInspectorUpdatedMethods)
+            catch (ObjectDisposedException)
             {
+                // Serialized state was torn down - abort this draw
+                return;
+            }
+        
+            //If the inspector was madeChanges
+            if (OnInspectorUpdatedMethods == null || OnInspectorUpdatedMethods.Length == 0) return;
+            for (int i = 0; i < OnInspectorUpdatedMethods.Length; i++)
+            {
+                var tuple = OnInspectorUpdatedMethods[i];
+                var method = tuple.Item1;
+                var attribute = tuple.Item2;
                 if (!attribute.IsCorrectEditorPlayerState()) continue;
                 try
                 {
-                    (member.MemberInfo as MethodInfo)?.Invoke(target, null);
+                    (method.MemberInfo as MethodInfo)?.Invoke(target, null);
                 }
                 catch { }
             }
