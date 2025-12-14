@@ -1,4 +1,4 @@
-﻿using System.Linq;
+using System.Linq;
 using System.Reflection;
 using UnityEditor;
 using UnityEngine;
@@ -100,30 +100,39 @@ namespace UV.EzyInspector.Editors
         {
             DrawMonoScriptUI();
             serializedObject.Update();
+            
+            //Rebuild inspector tree every frame
+            RootMember = new InspectorMember(target);
+            DrawableMembers = RootMember.GetDrawableMembers(RootMember, serializedObject);
+            
             EditorGUI.BeginChangeCheck();
 
             //Draw the members
-            DrawSerializedMembers(RootMember);
+            DrawSerializedMembers(RootMember, DrawableMembers);
 
             //If any changes were made save them
-            if (!EditorGUI.EndChangeCheck()) return;
-            serializedObject.ApplyModifiedProperties();
-
-            //If the inspector was madeChanges
-            if (OnInspectorUpdatedMethods == null || OnInspectorUpdatedMethods.Length == 0) return;
-            for (int i = 0; i < OnInspectorUpdatedMethods.Length; i++)
+            if (EditorGUI.EndChangeCheck())
             {
-                var tuple = OnInspectorUpdatedMethods[i];
-                var method = tuple.Item1;
-                var attribute = tuple.Item2;
+                serializedObject.ApplyModifiedProperties();
+                InvokeInspectorUpdatedMethods();
+            }
+        }
+        
+        private void InvokeInspectorUpdatedMethods()
+        {
+            if (OnInspectorUpdatedMethods == null) return;
+
+            foreach (var (member, attribute) in OnInspectorUpdatedMethods)
+            {
                 if (!attribute.IsCorrectEditorPlayerState()) continue;
                 try
                 {
-                    (method.MemberInfo as MethodInfo)?.Invoke(target, null);
+                    (member.MemberInfo as MethodInfo)?.Invoke(target, null);
                 }
                 catch { }
             }
         }
+
 
         /// <summary>
         /// Draws the ui for the MonoScript
@@ -218,6 +227,11 @@ namespace UV.EzyInspector.Editors
             {
                 var member = drawableMembers[i];
 
+                //Safety net before working on member
+                var propety = member.MemberProperty;
+                if (propety == null || propety.serializedObject == null)
+                    continue;
+                
                 //Change indent level and readonly based on the parent 
                 EditorGUI.indentLevel = member.Depth;
                 GUI.enabled = guiState;
