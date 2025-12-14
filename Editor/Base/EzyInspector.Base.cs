@@ -1,4 +1,4 @@
-﻿using System.Linq;
+using System.Linq;
 using System.Reflection;
 using UnityEditor;
 using UnityEngine;
@@ -98,17 +98,25 @@ namespace UV.EzyInspector.Editors
 
         public override void OnInspectorGUI()
         {
-            DrawMonoScriptUI();
-            serializedObject.Update();
-            EditorGUI.BeginChangeCheck();
-
-            //Draw the members
-            DrawSerializedMembers(RootMember);
-
-            //If any changes were made save them
-            if (!EditorGUI.EndChangeCheck()) return;
-            serializedObject.ApplyModifiedProperties();
-
+            try
+            {
+                DrawMonoScriptUI();
+                serializedObject.Update();
+                EditorGUI.BeginChangeCheck();
+            
+                //Draw the members
+                DrawSerializedMembers(RootMember);
+            
+                //If any changes were made save them
+                if (!EditorGUI.EndChangeCheck()) return;
+                serializedObject.ApplyModifiedProperties();
+            }
+            catch (System.ObjectDisposedException)
+            {
+                // Serialized state was torn down - abort this draw
+                return;
+            }
+        
             //If the inspector was madeChanges
             if (OnInspectorUpdatedMethods == null || OnInspectorUpdatedMethods.Length == 0) return;
             for (int i = 0; i < OnInspectorUpdatedMethods.Length; i++)
@@ -124,6 +132,7 @@ namespace UV.EzyInspector.Editors
                 catch { }
             }
         }
+
 
         /// <summary>
         /// Draws the ui for the MonoScript
@@ -218,6 +227,11 @@ namespace UV.EzyInspector.Editors
             {
                 var member = drawableMembers[i];
 
+                //Safety net before working on member
+                var propety = member.MemberProperty;
+                if (propety == null || propety.serializedObject == null)
+                    continue;
+                
                 //Change indent level and readonly based on the parent 
                 EditorGUI.indentLevel = member.Depth;
                 GUI.enabled = guiState;
