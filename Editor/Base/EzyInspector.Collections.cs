@@ -25,6 +25,9 @@ namespace UV.EzyInspector.Editors
                 return false;
             }
 
+            if(member.TryGetAttribute(out HeaderAttribute header))
+                EditorGUILayout.LabelField(header.header, EditorStyles.boldLabel);
+
             //Draw the foldout header
             DrawFoldoutHeader(property, member, elementType, disabled);
             if (!property.isExpanded) return property.serializedObject.ApplyModifiedProperties();
