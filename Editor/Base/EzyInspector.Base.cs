@@ -227,11 +227,6 @@ namespace UV.EzyInspector.Editors
             {
                 var member = drawableMembers[i];
 
-                //Safety net before working on member
-                var propety = member.MemberProperty;
-                if (propety == null || propety.serializedObject == null)
-                    continue;
-                
                 //Change indent level and readonly based on the parent 
                 EditorGUI.indentLevel = member.Depth;
                 GUI.enabled = guiState;
