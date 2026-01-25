@@ -116,8 +116,9 @@ namespace UV.EzyInspector.Editors
                 //Clear list button
                 using (new EditorGUI.DisabledGroupScope(property.arraySize == 0))
                 {
-                    var closeIcon = EditorGUIUtility.IconContent("d_winbtn_win_close@2x");
                     GUIContent clearList;
+#if UNITY_6
+                    var closeIcon = EditorGUIUtility.IconContent("d_winbtn_win_close@2x.png");
                     if (closeIcon == null)
                     {
                         Debug.Log("Icon named 'd_winbtn_win_close@2x' couldn't be found!");
@@ -126,13 +127,12 @@ namespace UV.EzyInspector.Editors
                             tooltip = "Clear list"
                         };
                     }
-                    else
+#else
+                    clearList = new("X")
                     {
-                        clearList = new("X")
-                        {
-                            tooltip = "Clear list"
-                        };
-                    }
+                         tooltip = "Clear list"
+                    };
+#endif
 
                     if (GUILayout.Button(clearList,
                                          GUILayout.MinWidth(10), GUILayout.MaxWidth(20),
@@ -295,10 +295,17 @@ namespace UV.EzyInspector.Editors
         /// <param name="wantsToDelete">The action to be invoked when the remove button is clicked</param>
         protected virtual void DrawElementRemoveButton(Action wantsToDelete)
         {
+#if UNITY_6
             GUIContent removeButton = new(EditorGUIUtility.IconContent("d_winbtn_win_close@2x"))
             {
                 tooltip = "Removes the element from the list"
             };
+#else
+            GUIContent removeButton = new("X")
+            {
+                tooltip = "Removes the element from the list"
+            };
+#endif
 
             if (GUILayout.Button(removeButton, GUILayout.Width(20), GUILayout.Height(20)))
                 wantsToDelete?.Invoke();
