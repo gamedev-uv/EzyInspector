@@ -26,7 +26,10 @@ namespace UV.EzyInspector.Editors
             }
 
             if(member.TryGetAttribute(out HeaderAttribute header))
+            {
+                EditorGUILayout.Space();
                 EditorGUILayout.LabelField(header.header, EditorStyles.boldLabel);
+            }
 
             //Draw the foldout header
             DrawFoldoutHeader(property, member, elementType, disabled);
