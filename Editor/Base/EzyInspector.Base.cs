@@ -257,43 +257,46 @@ namespace UV.EzyInspector.Editors
                 if (member.IsMemberHidden() || member.HasAttribute<HideInInspector>())
                     continue;
 
-                //Draw a button for the method
-                if (member.TryGetAttribute(out ButtonAttribute button))
+                if(!member.MemberProperty.isArray)
                 {
-                    //Skips methods if the object is an UnityEngine.Object Reference 
-                    var isNestedObjectMethod = member.ParentObject is Object @object && @object != target;
-                    if (isNestedObjectMethod) continue;
-
-                    updated = DrawButton(member, button) || updated;
-                    continue;
-                }
-
-                //If it is a label
-                if (member.TryGetAttribute(out DisplayAsLabel label) && member.MemberProperty != null)
-                {
-                    GUILayout.Label(label.FormattedString
-                                                       .Replace("{0}", member.MemberProperty == null ? member.Name : member.MemberProperty.displayName)
-                                                       .Replace("{1}", $"{member.GetValue()}"));
-                    continue;
-                }
-
-                //If it is a button toggle
-                if (member.TryGetAttribute(out ToggleButtonAttribute toggle))
-                {
-                    var property = member.MemberProperty;
-                    if (property.propertyType == SerializedPropertyType.Boolean)
+                    //Draw a button for the method
+                    if (member.TryGetAttribute(out ButtonAttribute button))
                     {
-                        var buttonName = property.boolValue ? toggle.OnLabel : toggle.OffLabel;
-                        if (!GUILayout.Button(buttonName)) continue;
+                        //Skips methods if the object is an UnityEngine.Object Reference 
+                        var isNestedObjectMethod = member.ParentObject is Object @object && @object != target;
+                        if (isNestedObjectMethod) continue;
 
-                        //If the toggle was updated
-                        property.boolValue = !property.boolValue;
-                        updated = true;
+                        updated = DrawButton(member, button) || updated;
                         continue;
                     }
 
-                    //Draw a help box and then the member itself
-                    EditorGUILayout.HelpBox("[ToggleButton] is only valid on booleans", MessageType.Error);
+                    //If it is a label
+                    if (member.TryGetAttribute(out DisplayAsLabel label) && member.MemberProperty != null)
+                    {
+                        GUILayout.Label(label.FormattedString
+                                                           .Replace("{0}", member.MemberProperty == null ? member.Name : member.MemberProperty.displayName)
+                                                           .Replace("{1}", $"{member.GetValue()}"));
+                        continue;
+                    }
+
+                    //If it is a button toggle
+                    if (member.TryGetAttribute(out ToggleButtonAttribute toggle))
+                    {
+                        var property = member.MemberProperty;
+                        if (property.propertyType == SerializedPropertyType.Boolean)
+                        {
+                            var buttonName = property.boolValue ? toggle.OnLabel : toggle.OffLabel;
+                            if (!GUILayout.Button(buttonName)) continue;
+
+                            //If the toggle was updated
+                            property.boolValue = !property.boolValue;
+                            updated = true;
+                            continue;
+                        }
+
+                        //Draw a help box and then the member itself
+                        EditorGUILayout.HelpBox("[ToggleButton] is only valid on booleans", MessageType.Error);
+                    }
                 }
 
                 //Draw the member
@@ -319,7 +322,7 @@ namespace UV.EzyInspector.Editors
             var disabled = member.IsReadOnly || member.HasAttribute<ReadOnlyAttribute>();
             EditorGUI.BeginDisabledGroup(disabled);
 
-            //Draw the property 
+            //Draw the collection 
             if (property.isArray && !member.MemberType.IsSimpleType())
             {
                 if (member.HasAttribute<SerializeReference>())
@@ -328,7 +331,47 @@ namespace UV.EzyInspector.Editors
                     propertyUpdated = DrawCollection(property, member, disabled);
             }
             else
-                propertyUpdated = EditorGUILayout.PropertyField(property, member.HasAttribute<UsePropertyDrawer>());
+            {
+                if (member.TryGetAttribute(out CreateIfNullAttribute createIfNull))
+                {
+                    if (!member.MemberType.IsSubclassOf(typeof(ScriptableObject)))
+                    {
+                        EditorGUILayout.HelpBox($"Can't use CreateIfNullAttribute with {member.MemberType}.\n Only usable with Scriptable Obects",
+                                                MessageType.Warning);
+                    }
+                    else
+                    {
+                        using (new EditorGUILayout.HorizontalScope())
+                        {
+                            if (member.MemberProperty.objectReferenceValue == null)
+                            {
+                                if (GUILayout.Button("Create"))
+                                {
+                                    var createdInstance = CreateInstance(member.MemberType);
+
+                                    string path;
+                                    if(target is ScriptableObject obj)
+                                        path = AssetDatabase.GetAssetPath(obj);
+                                    else
+                                        path = $"Assets/New {member.MemberType.Name}.asset";
+
+                                    path = AssetDatabase.GenerateUniqueAssetPath(path);
+                                    AssetDatabase.CreateAsset(createdInstance, path);
+                                    AssetDatabase.Refresh();
+
+                                    member.MemberProperty.objectReferenceValue = createdInstance;
+                                }
+                            }
+
+                            propertyUpdated = EditorGUILayout.PropertyField(member.MemberProperty);
+                        }
+                    }
+                }
+                else
+                {
+                    propertyUpdated = EditorGUILayout.PropertyField(property, member.HasAttribute<UsePropertyDrawer>());
+                }
+            }
 
             EditorGUI.EndDisabledGroup();
             return propertyUpdated;
