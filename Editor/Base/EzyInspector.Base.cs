@@ -1,7 +1,8 @@
+using System.IO;
 using System.Linq;
-using System.Reflection;
 using UnityEditor;
 using UnityEngine;
+using System.Reflection;
 using Object = UnityEngine.Object;
 
 namespace UV.EzyInspector.Editors
@@ -350,12 +351,13 @@ namespace UV.EzyInspector.Editors
                                     var createdInstance = CreateInstance(member.MemberType);
 
                                     string path;
+                                    string assetName = $"New {member.MemberType.Name}.asset";
                                     if(target is ScriptableObject obj)
-                                        path = AssetDatabase.GetAssetPath(obj);
+                                        path = Path.GetDirectoryName(AssetDatabase.GetAssetPath(obj));
                                     else
-                                        path = $"Assets/New {member.MemberType.Name}.asset";
+                                        path = $"Assets/";
 
-                                    path = AssetDatabase.GenerateUniqueAssetPath(path);
+                                    path = AssetDatabase.GenerateUniqueAssetPath(Path.Combine(path, assetName));
                                     AssetDatabase.CreateAsset(createdInstance, path);
                                     AssetDatabase.Refresh();
 
