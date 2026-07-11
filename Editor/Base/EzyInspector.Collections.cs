@@ -237,6 +237,17 @@ namespace UV.EzyInspector.Editors
         }
 
         /// <summary>
+        /// Gets the name of the element's foldout at the given index
+        /// </summary>
+        /// <param name="index">The index of the element</param>
+        /// <param name="element">The element itself</param>
+        /// <returns>Returns the name for the foldout for the given element</returns>
+        protected virtual string GetElementFoldoutName(int index, SerializedProperty element)
+        {
+            return element.displayName;
+        }
+
+        /// <summary>
         /// Draws the inspector for the given array element 
         /// </summary>
         /// <param name="index">The index array element which is to be drawn</param>
@@ -265,7 +276,7 @@ namespace UV.EzyInspector.Editors
                 var deleted = false;
                 if (drawFoldout)
                 {
-                    element.isExpanded = EditorGUILayout.Foldout(element.isExpanded, element.displayName, true);
+                    element.isExpanded = EditorGUILayout.Foldout(element.isExpanded, GetElementFoldoutName(index, element), true);
                     DrawElementRemoveButton(() =>
                     {
                         deleted = true;
