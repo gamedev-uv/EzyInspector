@@ -104,10 +104,10 @@ namespace UV.EzyInspector.Editors
                 DrawMonoScriptUI();
                 serializedObject.Update();
                 EditorGUI.BeginChangeCheck();
-            
+
                 //Draw the members
                 DrawSerializedMembers(RootMember);
-            
+
                 //If any changes were made save them
                 if (!EditorGUI.EndChangeCheck()) return;
                 serializedObject.ApplyModifiedProperties();
@@ -117,7 +117,7 @@ namespace UV.EzyInspector.Editors
                 // Serialized state was torn down - abort this draw
                 return;
             }
-        
+
             //If the inspector was madeChanges
             if (OnInspectorUpdatedMethods == null || OnInspectorUpdatedMethods.Length == 0) return;
             for (int i = 0; i < OnInspectorUpdatedMethods.Length; i++)
@@ -258,46 +258,43 @@ namespace UV.EzyInspector.Editors
                 if (member.IsMemberHidden() || member.HasAttribute<HideInInspector>())
                     continue;
 
-                if(!member.MemberProperty.isArray)
+                //Draw a button for the method
+                if (member.TryGetAttribute(out ButtonAttribute button))
                 {
-                    //Draw a button for the method
-                    if (member.TryGetAttribute(out ButtonAttribute button))
-                    {
-                        //Skips methods if the object is an UnityEngine.Object Reference 
-                        var isNestedObjectMethod = member.ParentObject is Object @object && @object != target;
-                        if (isNestedObjectMethod) continue;
+                    //Skips methods if the object is an UnityEngine.Object Reference 
+                    var isNestedObjectMethod = member.ParentObject is Object @object && @object != target;
+                    if (isNestedObjectMethod) continue;
 
-                        updated = DrawButton(member, button) || updated;
+                    updated = DrawButton(member, button) || updated;
+                    continue;
+                }
+
+                //If it is a label
+                if (member.TryGetAttribute(out DisplayAsLabel label) && member.MemberProperty != null)
+                {
+                    GUILayout.Label(label.FormattedString
+                                                       .Replace("{0}", member.MemberProperty == null ? member.Name : member.MemberProperty.displayName)
+                                                       .Replace("{1}", $"{member.GetValue()}"));
+                    continue;
+                }
+
+                //If it is a button toggle
+                if (member.TryGetAttribute(out ToggleButtonAttribute toggle))
+                {
+                    var property = member.MemberProperty;
+                    if (property.propertyType == SerializedPropertyType.Boolean)
+                    {
+                        var buttonName = property.boolValue ? toggle.OnLabel : toggle.OffLabel;
+                        if (!GUILayout.Button(buttonName)) continue;
+
+                        //If the toggle was updated
+                        property.boolValue = !property.boolValue;
+                        updated = true;
                         continue;
                     }
 
-                    //If it is a label
-                    if (member.TryGetAttribute(out DisplayAsLabel label) && member.MemberProperty != null)
-                    {
-                        GUILayout.Label(label.FormattedString
-                                                           .Replace("{0}", member.MemberProperty == null ? member.Name : member.MemberProperty.displayName)
-                                                           .Replace("{1}", $"{member.GetValue()}"));
-                        continue;
-                    }
-
-                    //If it is a button toggle
-                    if (member.TryGetAttribute(out ToggleButtonAttribute toggle))
-                    {
-                        var property = member.MemberProperty;
-                        if (property.propertyType == SerializedPropertyType.Boolean)
-                        {
-                            var buttonName = property.boolValue ? toggle.OnLabel : toggle.OffLabel;
-                            if (!GUILayout.Button(buttonName)) continue;
-
-                            //If the toggle was updated
-                            property.boolValue = !property.boolValue;
-                            updated = true;
-                            continue;
-                        }
-
-                        //Draw a help box and then the member itself
-                        EditorGUILayout.HelpBox("[ToggleButton] is only valid on booleans", MessageType.Error);
-                    }
+                    //Draw a help box and then the member itself
+                    EditorGUILayout.HelpBox("[ToggleButton] is only valid on booleans", MessageType.Error);
                 }
 
                 //Draw the member
@@ -352,7 +349,7 @@ namespace UV.EzyInspector.Editors
 
                                     string path;
                                     string assetName = $"New {member.MemberType.Name}.asset";
-                                    if(target is ScriptableObject obj)
+                                    if (target is ScriptableObject obj)
                                         path = Path.GetDirectoryName(AssetDatabase.GetAssetPath(obj));
                                     else
                                         path = $"Assets/";
